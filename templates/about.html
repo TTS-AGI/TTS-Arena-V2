@@ -1,0 +1,377 @@
+{% extends "base.html" %}
+
+{% block title %}About - TTS Arena{% endblock %}
+
+{% block current_page %}About{% endblock %}
+
+{% block extra_head %}
+<style>
+    .about-container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .about-section {
+        background: white;
+        border-radius: var(--radius);
+        padding: 24px;
+        margin-bottom: 24px;
+        box-shadow: var(--shadow);
+    }
+
+    .about-section h2 {
+        color: var(--primary-color);
+        margin-bottom: 16px;
+        font-size: 24px;
+    }
+
+    .about-section p {
+        margin-bottom: 16px;
+        line-height: 1.6;
+        color: #444;
+    }
+
+    .about-section p:last-child {
+        margin-bottom: 0;
+    }
+
+    .feature-list {
+        list-style: none;
+        padding: 0;
+    }
+
+    .feature-list li {
+        margin-bottom: 12px;
+        padding-left: 28px;
+        position: relative;
+    }
+
+    .feature-list li::before {
+        content: "•";
+        color: var(--primary-color);
+        font-size: 24px;
+        position: absolute;
+        left: 8px;
+        top: -4px;
+    }
+
+    .credits-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 24px;
+        margin-top: 16px;
+    }
+
+    .credit-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .credit-item a {
+        color: var(--primary-color);
+        text-decoration: none;
+    }
+
+    .credit-item a:hover {
+        text-decoration: underline;
+    }
+
+    .social-links {
+        display: flex;
+        gap: 12px;
+    }
+    
+    .social-icon {
+        width: 20px;
+        height: 20px;
+    }
+
+    .citation-box {
+        background-color: var(--light-gray);
+        border-radius: var(--radius);
+        padding: 16px;
+        margin-top: 16px;
+        position: relative;
+        font-family: monospace;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-size: 14px;
+        line-height: 1.5;
+    }
+
+    .copy-citation {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background-color: white;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius);
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    .copy-citation:hover {
+        background-color: var(--light-gray);
+    }
+
+    .copy-citation svg {
+        color: var(--text-color);
+    }
+
+    .faq-item {
+        margin-bottom: 20px;
+    }
+
+    .faq-question {
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: var(--primary-color);
+    }
+
+    .faq-answer {
+        line-height: 1.6;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="about-container">
+    <div class="about-section">
+        <h2>Welcome to TTS Arena 2.0</h2>
+        <p>
+            TTS Arena evaluates leading speech synthesis models in an interactive, community-driven platform. 
+            Inspired by LMsys's <a href="https://chat.lmsys.org/" target="_blank" rel="noopener">Chatbot Arena</a>, we've created 
+            a space where anyone can compare and rank text-to-speech technologies through direct, side-by-side evaluation.
+        </p>
+        <p>
+            Our second version now supports conversational models for podcast-like content generation, expanding the arena's scope to reflect the diverse applications of modern speech synthesis.
+        </p>
+    </div>
+
+    <div class="about-section">
+        <h2>Motivation</h2>
+        <p>
+            The field of speech synthesis has long lacked reliable methods to measure model quality. Traditional 
+            metrics like WER (word error rate) often fail to capture the nuances of natural speech, while subjective 
+            measures such as MOS (mean opinion score) typically involve small-scale experiments with limited participants.
+        </p>
+        <p>
+            TTS Arena addresses these limitations by inviting the entire community to participate in the evaluation 
+            process, making both the opportunity to rank models and the resulting insights accessible to everyone.
+        </p>
+    </div>
+
+    <div class="about-section">
+        <h2>How The Arena Works</h2>
+        <p>
+            The concept is straightforward: enter text that will be synthesized by two competing models. After 
+            listening to both samples, vote for the one that sounds more natural and engaging. To prevent bias, 
+            model names are revealed only after your vote is submitted.
+        </p>
+        <ul class="feature-list">
+            <li>Enter your own text or select a random sentence</li>
+            <li>Listen to two different TTS models synthesize the same content</li>
+            <li>Compare conversational models for podcast-like content</li>
+            <li>Vote for the model that sounds more natural, clear, and expressive</li>
+            <li>Track model rankings on our leaderboard</li>
+        </ul>
+    </div>
+
+    <div class="about-section">
+        <h2>Frequently Asked Questions</h2>
+        <div class="faq-item">
+            <div class="faq-question">What happened to the TTS Arena V1 leaderboard?</div>
+            <div class="faq-answer">
+                The TTS Arena V1 leaderboard is now deprecated. While you can no longer vote on it, the results and leaderboard are still available for reference at <a href="https://huggingface.co/spaces/TTS-AGI/TTS-Arena" target="_blank" rel="noopener">TTS Arena V1</a>. The leaderboard is static and will not change.
+            </div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-question">How are models ranked in TTS Arena?</div>
+            <div class="faq-answer">
+                Models are ranked using an Elo rating system, similar to chess rankings. When you vote for a model, its rating increases while the other model's rating decreases. The amount of change depends on the current ratings of both models.
+            </div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-question">Is the TTS Arena V2 leaderboard affected by votes from V1?</div>
+            <div class="faq-answer">
+                No, the TTS Arena V2 leaderboard is a completely fresh start. Votes from V1 do not affect the V2 leaderboard in any way. All models in V2 start with a clean slate.
+            </div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-question">Can I suggest a model to be added to the arena?</div>
+            <div class="faq-answer">
+                Yes! We welcome suggestions for new models. Please reach out to us through the Hugging Face community or create an issue in our GitHub repository. If you are developing a new model and wish for it to be added anonymously for pre-release evaluation, please reach out to us to discuss.
+            </div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-question">How can I contribute to the project?</div>
+            <div class="faq-answer">
+                You can contribute by voting on models, suggesting improvements, reporting bugs, or even contributing code. Check our GitHub repository for more information on how to get involved.
+            </div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-question">What's new in TTS Arena 2.0?</div>
+            <div class="faq-answer">
+                TTS Arena 2.0 introduces support for conversational models (for podcast-like content), improved UI/UX, and a more robust backend infrastructure for handling more models and votes.
+            </div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-question">Do I need to login to use TTS Arena?</div>
+            <div class="faq-answer">
+                Login is optional and not required to vote. If you choose to login (with Hugging Face), texts you enter will be associated with your account, and you'll have access to a personal leaderboard showing the models you favor the most.
+            </div>
+        </div>
+    </div>
+
+    <div class="about-section">
+        <h2>Citation</h2>
+        <p>
+            If you use TTS Arena in your research, please cite it as follows:
+        </p>
+        <div class="citation-box" id="citation-text">@misc{tts-arena-v2,
+        title        = {TTS Arena 2.0: Benchmarking Text-to-Speech Models in the Wild},
+        author       = {mrfakename and Srivastav, Vaibhav and Fourrier, Clémentine and Pouget, Lucain and Lacombe, Yoach and main and Gandhi, Sanchit and Passos, Apolinário and Cuenca, Pedro},
+        year         = 2024,
+        publisher    = {Hugging Face},
+        howpublished = "\url{https://huggingface.co/spaces/TTS-AGI/TTS-Arena-V2}"
+}<button class="copy-citation" onclick="copyToClipboard()" title="Copy citation"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy-icon lucide-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg></button></div>
+        <script>
+            function copyToClipboard() {
+                const text = document.getElementById('citation-text').innerText;
+                navigator.clipboard.writeText(text).then(() => {
+                    const btn = document.querySelector('.copy-citation');
+                    const originalContent = btn.innerHTML;
+                    btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+                    setTimeout(() => {
+                        btn.innerHTML = originalContent;
+                    }, 2000);
+                });
+            }
+        </script>
+    </div>
+
+    <div class="about-section">
+        <h2>Credits</h2>
+        <p>
+            Thank you to the following individuals who helped make this project possible:
+        </p>
+        <div class="credits-list">
+            <div class="credit-item">
+                <span>VB</span>
+                <div class="social-links">
+                    <a href="https://twitter.com/reach_vb" target="_blank" rel="noopener" title="Twitter">
+                        <img src="{{ url_for('static', filename='twitter.svg') }}" alt="Twitter" class="social-icon">
+                    </a>
+                    <a href="https://huggingface.co/reach-vb" target="_blank" rel="noopener" title="Hugging Face">
+                        <img src="{{ url_for('static', filename='huggingface.svg') }}" alt="Hugging Face" class="social-icon">
+                    </a>
+                </div>
+            </div>
+            <div class="credit-item">
+                <span>Clémentine Fourrier</span>
+                <div class="social-links">
+                    <a href="https://twitter.com/clefourrier" target="_blank" rel="noopener" title="Twitter">
+                        <img src="{{ url_for('static', filename='twitter.svg') }}" alt="Twitter" class="social-icon">
+                    </a>
+                    <a href="https://huggingface.co/clefourrier" target="_blank" rel="noopener" title="Hugging Face">
+                        <img src="{{ url_for('static', filename='huggingface.svg') }}" alt="Hugging Face" class="social-icon">
+                    </a>
+                </div>
+            </div>
+            <div class="credit-item">
+                <span>Lucain Pouget</span>
+                <div class="social-links">
+                    <a href="https://twitter.com/Wauplin" target="_blank" rel="noopener" title="Twitter">
+                        <img src="{{ url_for('static', filename='twitter.svg') }}" alt="Twitter" class="social-icon">
+                    </a>
+                    <a href="https://huggingface.co/Wauplin" target="_blank" rel="noopener" title="Hugging Face">
+                        <img src="{{ url_for('static', filename='huggingface.svg') }}" alt="Hugging Face" class="social-icon">
+                    </a>
+                </div>
+            </div>
+            <div class="credit-item">
+                <span>Yoach Lacombe</span>
+                <div class="social-links">
+                    <a href="https://twitter.com/yoachlacombe" target="_blank" rel="noopener" title="Twitter">
+                        <img src="{{ url_for('static', filename='twitter.svg') }}" alt="Twitter" class="social-icon">
+                    </a>
+                    <a href="https://huggingface.co/ylacombe" target="_blank" rel="noopener" title="Hugging Face">
+                        <img src="{{ url_for('static', filename='huggingface.svg') }}" alt="Hugging Face" class="social-icon">
+                    </a>
+                </div>
+            </div>
+            <div class="credit-item">
+                <span>Main Horse</span>
+                <div class="social-links">
+                    <a href="https://twitter.com/main_horse" target="_blank" rel="noopener" title="Twitter">
+                        <img src="{{ url_for('static', filename='twitter.svg') }}" alt="Twitter" class="social-icon">
+                    </a>
+                    <a href="https://huggingface.co/main-horse" target="_blank" rel="noopener" title="Hugging Face">
+                        <img src="{{ url_for('static', filename='huggingface.svg') }}" alt="Hugging Face" class="social-icon">
+                    </a>
+                </div>
+            </div>
+            <div class="credit-item">
+                <span>Sanchit Gandhi</span>
+                <div class="social-links">
+                    <a href="https://twitter.com/sanchitgandhi99" target="_blank" rel="noopener" title="Twitter">
+                        <img src="{{ url_for('static', filename='twitter.svg') }}" alt="Twitter" class="social-icon">
+                    </a>
+                    <a href="https://huggingface.co/sanchit-gandhi" target="_blank" rel="noopener" title="Hugging Face">
+                        <img src="{{ url_for('static', filename='huggingface.svg') }}" alt="Hugging Face" class="social-icon">
+                    </a>
+                </div>
+            </div>
+            <div class="credit-item">
+                <span>Apolinário Passos</span>
+                <div class="social-links">
+                    <a href="https://twitter.com/multimodalart" target="_blank" rel="noopener" title="Twitter">
+                        <img src="{{ url_for('static', filename='twitter.svg') }}" alt="Twitter" class="social-icon">
+                    </a>
+                    <a href="https://huggingface.co/multimodalart" target="_blank" rel="noopener" title="Hugging Face">
+                        <img src="{{ url_for('static', filename='huggingface.svg') }}" alt="Hugging Face" class="social-icon">
+                    </a>
+                </div>
+            </div>
+            <div class="credit-item">
+                <span>Pedro Cuenca</span>
+                <div class="social-links">
+                    <a href="https://twitter.com/pcuenq" target="_blank" rel="noopener" title="Twitter">
+                        <img src="{{ url_for('static', filename='twitter.svg') }}" alt="Twitter" class="social-icon">
+                    </a>
+                    <a href="https://huggingface.co/pcuenq" target="_blank" rel="noopener" title="Hugging Face">
+                        <img src="{{ url_for('static', filename='huggingface.svg') }}" alt="Hugging Face" class="social-icon">
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="about-section">
+        <h2>Privacy Statement</h2>
+        <p>
+            We may store text you enter and generated audio. If you are logged in, we may associate your votes with your Hugging Face username. 
+            You agree that we may collect, share, and/or publish any data you input for research and/or 
+            commercial purposes.
+        </p>
+    </div>
+
+    <div class="about-section">
+        <h2>License</h2>
+        <p>
+            Generated audio clips cannot be redistributed and may be used for personal, non-commercial use only.
+            The code for the Arena is licensed under the Zlib license.
+            Random sentences are sourced from a filtered subset of the 
+            <a href="https://www.cs.columbia.edu/~hgs/audio/harvard.html" target="_blank" rel="noopener">Harvard Sentences</a>.
+        </p>
+    </div>
+</div>
+{% endblock %}

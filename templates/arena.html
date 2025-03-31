@@ -1,0 +1,767 @@
+{% extends "base.html" %}
+
+{% block title %}Arena - TTS Arena{% endblock %}
+
+{% block current_page %}Arena{% endblock %}
+
+{% block content %}
+<div class="tabs">
+    <div class="tab active" data-tab="tts">TTS</div>
+    <div class="tab" data-tab="conversational">Conversational</div>
+</div>
+
+<div id="tts-tab" class="tab-content active">
+    <form class="input-container">
+        <div class="input-group">
+            <button type="button" class="segmented-btn random-btn" title="Roll random text">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-shuffle-icon lucide-shuffle">
+                    <path d="m18 14 4 4-4 4" />
+                    <path d="m18 2 4 4-4 4" />
+                    <path d="M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22" />
+                    <path d="M2 6h1.972a4 4 0 0 1 3.6 2.2" />
+                    <path d="M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45" />
+                </svg>
+            </button>
+            <input type="text" class="text-input" placeholder="Enter text to synthesize...">
+            <button type="submit" class="segmented-btn synth-btn">Synthesize</button>
+        </div>
+        <button type="submit" class="mobile-synth-btn">Synthesize</button>
+    </form>
+
+    <div class="loading-container" style="display: none;">
+        <div class="loader-wrapper">
+            <div class="loader-animation">
+                <div class="sound-wave">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+            <div class="loader-text">Generating audio samples...</div>
+            <div class="loader-subtext">This may take up to 30 seconds</div>
+        </div>
+    </div>
+
+    <div class="players-container" style="display: none;">
+        <div class="player">
+            <div class="player-label">Model A</div>
+            <audio controls class="audio-player"></audio>
+            <button class="vote-btn" data-model="a" disabled>
+                Vote for A
+                <span class="shortcut-key">A</span>
+                <span class="vote-loader" style="display: none;">
+                    <div class="vote-spinner"></div>
+                </span>
+            </button>
+        </div>
+
+        <div class="player">
+            <div class="player-label">Model B</div>
+            <audio controls class="audio-player"></audio>
+            <button class="vote-btn" data-model="b" disabled>
+                Vote for B
+                <span class="shortcut-key">B</span>
+                <span class="vote-loader" style="display: none;">
+                    <div class="vote-spinner"></div>
+                </span>
+            </button>
+        </div>
+    </div>
+
+    <div class="vote-results" style="display: none;">
+        <h3 class="results-heading">Vote Recorded!</h3>
+        <div class="results-content">
+            <div class="chosen-model">
+                <strong>You chose:</strong> <span class="chosen-model-name"></span>
+            </div>
+            <div class="rejected-model">
+                <strong>Over:</strong> <span class="rejected-model-name"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="next-round-container" style="display: none;">
+        <button class="next-round-btn">Next Round <span class="shortcut-key">N</span></button>
+    </div>
+</div>
+
+<div id="conversational-tab" class="tab-content">
+    <div class="coming-soon-container">
+        <div class="coming-soon-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+        </div>
+        <h2 class="coming-soon-title">Coming Soon</h2>
+        <p class="coming-soon-text">We're working on bringing conversational AI comparison to TTS Arena. Stay tuned for updates!</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+    .input-container {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 24px;
+    }
+    
+    .input-group {
+        display: flex;
+        width: 100%;
+        border-radius: var(--radius);
+        border: 1px solid var(--border-color);
+        overflow: hidden;
+    }
+    
+    /* Override base styles to remove duplicate borders */
+    .input-group .text-input {
+        flex: 1;
+        padding: 12px 16px;
+        border: none;
+        border-radius: 0;
+        font-size: 16px;
+        outline: none;
+        height: 48px;
+        transition: none;
+    }
+    
+    .input-group .text-input:focus {
+        border: none;
+        outline: none;
+        background-color: rgba(80, 70, 229, 0.03);
+    }
+    
+    .segmented-btn {
+        background-color: white;
+        border: none;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+    
+    .random-btn {
+        width: 48px;
+        border-right: 1px solid var(--border-color);
+    }
+
+    .random-btn svg {
+        color: var(--primary-color);
+    }
+    
+    .synth-btn {
+        padding: 0 24px;
+        font-weight: 500;
+        border-left: 1px solid var(--border-color);
+        background-color: var(--primary-color);
+        color: white;
+        font-size: 1em;
+    }
+    
+    .synth-btn:hover {
+        background-color: #4038c7;
+    }
+    
+    .random-btn:hover {
+        background-color: var(--light-gray);
+    }
+    
+    .mobile-synth-btn {
+        display: none;
+        width: 100%;
+        padding: 12px;
+        margin-top: 12px;
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: var(--radius);
+        font-weight: 500;
+        cursor: pointer;
+        font-size: 1em;
+    }
+    
+    .loading-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 40px 0;
+    }
+    
+    .loader-wrapper {
+        text-align: center;
+    }
+    
+    .loader-animation {
+        margin-bottom: 24px;
+    }
+    
+    .loader-text {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: var(--text-color);
+    }
+    
+    .loader-subtext {
+        font-size: 14px;
+        color: #666;
+    }
+    
+    .sound-wave {
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+    
+    .sound-wave span {
+        display: block;
+        width: 6px;
+        height: 20px;
+        background-color: var(--primary-color);
+        border-radius: 8px;
+        animation: sound-wave-animation 1.2s infinite ease-in-out;
+    }
+    
+    .sound-wave span:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+    
+    .sound-wave span:nth-child(3) {
+        animation-delay: 0.4s;
+    }
+    
+    .sound-wave span:nth-child(4) {
+        animation-delay: 0.6s;
+    }
+    
+    .sound-wave span:nth-child(5) {
+        animation-delay: 0.8s;
+    }
+    
+    .sound-wave span:nth-child(6) {
+        animation-delay: 1s;
+    }
+    
+    @keyframes sound-wave-animation {
+        0%, 100% {
+            height: 20px;
+        }
+        50% {
+            height: 50px;
+        }
+    }
+    
+    .vote-btn {
+        position: relative;
+        color: black;
+        font-size: 1rem;
+    }
+    
+    .vote-btn.selected {
+        background-color: var(--primary-color);
+        color: white;
+    }
+    
+    .vote-btn:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+    }
+    
+    .vote-loader {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: rgba(255, 255, 255, 0.8);
+    }
+    
+    .vote-spinner {
+        width: 20px;
+        height: 20px;
+        border: 2px solid rgba(80, 70, 229, 0.3);
+        border-radius: 50%;
+        border-top-color: var(--primary-color);
+        animation: spin 1s linear infinite;
+    }
+    
+    .next-round-container {
+        margin-top: 24px;
+        text-align: center;
+    }
+    
+    .next-round-btn {
+        padding: 12px 24px;
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: var(--radius);
+        font-weight: 500;
+        cursor: pointer;
+        position: relative;
+        width: 100%;
+        font-size: 1rem;
+        transition: background-color 0.2s;
+    }
+    
+    .next-round-btn:hover {
+        background-color: #4038c7;
+    }
+    
+    /* Vote results styling */
+    .vote-results {
+        background-color: #f0f4ff;
+        border: 1px solid #d0d7f7;
+        border-radius: var(--radius);
+        padding: 16px;
+        margin: 24px 0;
+    }
+    
+    .results-heading {
+        color: var(--primary-color);
+        margin-bottom: 12px;
+        font-size: 18px;
+    }
+    
+    .results-content {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+    
+    /* Tab styling */
+    .tabs {
+        display: flex;
+        border-bottom: 1px solid var(--border-color);
+        margin-bottom: 24px;
+    }
+    
+    .tab {
+        padding: 12px 24px;
+        cursor: pointer;
+        position: relative;
+        font-weight: 500;
+    }
+    
+    .tab.active {
+        color: var(--primary-color);
+    }
+    
+    .tab.active::after {
+        content: '';
+        position: absolute;
+        bottom: -1px;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        background-color: var(--primary-color);
+    }
+    
+    .tab-content {
+        display: none;
+    }
+    
+    .tab-content.active {
+        display: block;
+    }
+    
+    /* Coming soon styling */
+    .coming-soon-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 60px 20px;
+        background-color: var(--light-gray);
+        border-radius: var(--radius);
+        margin: 20px 0;
+    }
+    
+    .coming-soon-icon {
+        color: var(--primary-color);
+        margin-bottom: 20px;
+    }
+    
+    .coming-soon-title {
+        font-size: 24px;
+        font-weight: 600;
+        margin-bottom: 16px;
+        color: var(--text-color);
+    }
+    
+    .coming-soon-text {
+        font-size: 16px;
+        color: #666;
+        max-width: 500px;
+        line-height: 1.5;
+    }
+    
+    @media (max-width: 768px) {
+        .input-group {
+            border-radius: var(--radius);
+        }
+        
+        .synth-btn {
+            display: none;
+        }
+        
+        .mobile-synth-btn {
+            display: block;
+        }
+    }
+</style>
+{% endblock %} 
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const synthForm = document.querySelector('.input-container');
+        const synthBtn = document.querySelector('.synth-btn');
+        const mobileSynthBtn = document.querySelector('.mobile-synth-btn');
+        const loadingContainer = document.querySelector('.loading-container');
+        const playersContainer = document.querySelector('.players-container');
+        const voteButtons = document.querySelectorAll('.vote-btn');
+        const textInput = document.querySelector('.text-input');
+        const nextRoundBtn = document.querySelector('.next-round-btn');
+        const nextRoundContainer = document.querySelector('.next-round-container');
+        const randomBtn = document.querySelector('.random-btn');
+        const audioPlayers = document.querySelectorAll('.audio-player');
+        const tabs = document.querySelectorAll('.tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+        const voteResultsContainer = document.querySelector('.vote-results');
+        const chosenModelNameElement = document.querySelector('.chosen-model-name');
+        const rejectedModelNameElement = document.querySelector('.rejected-model-name');
+        
+        let bothSamplesPlayed = false;
+        let currentSessionId = null;
+        
+        // Random text options
+        const randomTexts = [
+            "The quick brown fox jumps over the lazy dog.",
+            "To be or not to be, that is the question.",
+            "Life is like a box of chocolates, you never know what you're going to get.",
+            "In a world where technology and humanity intertwine, the voice is our most natural interface.",
+            "Artificial intelligence will transform how we interact with computers and each other.",
+            "The sunset painted the sky with hues of orange and purple.",
+            "I can't believe it's not butter!",
+            "Four score and seven years ago, our forefathers brought forth upon this continent a new nation.",
+            "Houston, we have a problem.",
+            "May the force be with you."
+        ];
+        
+        // Check URL hash for direct tab access
+        function checkHashAndSetTab() {
+            const hash = window.location.hash.toLowerCase();
+            if (hash === '#conversational') {
+                // Switch to conversational tab
+                tabs.forEach(t => t.classList.remove('active'));
+                tabContents.forEach(c => c.classList.remove('active'));
+                
+                document.querySelector('.tab[data-tab="conversational"]').classList.add('active');
+                document.getElementById('conversational-tab').classList.add('active');
+            } else if (hash === '#tts') {
+                // Switch to TTS tab (explicit)
+                tabs.forEach(t => t.classList.remove('active'));
+                tabContents.forEach(c => c.classList.remove('active'));
+                
+                document.querySelector('.tab[data-tab="tts"]').classList.add('active');
+                document.getElementById('tts-tab').classList.add('active');
+            }
+        }
+        
+        // Check hash on page load
+        checkHashAndSetTab();
+        
+        // Listen for hash changes
+        window.addEventListener('hashchange', checkHashAndSetTab);
+        
+        // Tab switching functionality
+        tabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                const tabId = this.dataset.tab;
+                
+                // Update URL hash without page reload
+                history.replaceState(null, null, `#${tabId}`);
+                
+                // Remove active class from all tabs and contents
+                tabs.forEach(t => t.classList.remove('active'));
+                tabContents.forEach(c => c.classList.remove('active'));
+                
+                // Add active class to clicked tab and corresponding content
+                this.classList.add('active');
+                document.getElementById(`${tabId}-tab`).classList.add('active');
+                
+                // Reset TTS tab state if switching away from it
+                if (tabId !== 'tts') {
+                    resetToInitialState();
+                }
+            });
+        });
+        
+        function handleSynthesize(e) {
+            if (e) {
+                e.preventDefault();
+            }
+
+            const text = textInput.value.trim();
+            if (!text) {
+                openToast("Please enter some text to synthesize", "warning");
+                return;
+            }
+            
+            if (text.length > 1000) {
+                openToast("Text is too long. Please keep it under 1000 characters.", "warning");
+                return;
+            }
+
+            textInput.blur();
+            
+            // Show loading animation
+            loadingContainer.style.display = 'flex';
+            playersContainer.style.display = 'none';
+            voteResultsContainer.style.display = 'none';
+            nextRoundContainer.style.display = 'none';
+            
+            // Reset vote buttons
+            voteButtons.forEach(btn => {
+                btn.disabled = true;
+                btn.classList.remove('selected');
+                btn.querySelector('.vote-loader').style.display = 'none';
+            });
+            
+            // Reset the flag for both samples played
+            bothSamplesPlayed = false;
+            
+            // Call the API to generate TTS
+            fetch('/api/tts/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ text: text }),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => {
+                        throw new Error(err.error || 'Failed to generate TTS');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                currentSessionId = data.session_id;
+                
+                // Set audio sources
+                audioPlayers[0].src = data.audio_a;
+                audioPlayers[1].src = data.audio_b;
+                
+                // Show players
+                loadingContainer.style.display = 'none';
+                playersContainer.style.display = 'flex';
+                
+                // Play audio A automatically
+                const audioPlayerA = audioPlayers[0];
+                audioPlayerA.play();
+                
+                // When audio A ends, play audio B
+                audioPlayerA.addEventListener('ended', function onEndedA() {
+                    const audioPlayerB = audioPlayers[1];
+                    audioPlayerB.play();
+                    audioPlayerA.removeEventListener('ended', onEndedA);
+                });
+                
+                // When audio B ends, enable vote buttons
+                audioPlayers[1].addEventListener('ended', function onEndedB() {
+                    bothSamplesPlayed = true;
+                    voteButtons.forEach(btn => {
+                        btn.disabled = false;
+                    });
+                    audioPlayers[1].removeEventListener('ended', onEndedB);
+                });
+            })
+            .catch(error => {
+                loadingContainer.style.display = 'none';
+                openToast(error.message, "error");
+                console.error('Error:', error);
+            });
+        }
+        
+        function handleVote(model) {
+            // Disable both vote buttons
+            voteButtons.forEach(btn => {
+                btn.disabled = true;
+                if (btn.dataset.model === model) {
+                    btn.querySelector('.vote-loader').style.display = 'flex';
+                }
+            });
+            
+            // Send vote to server
+            fetch('/api/tts/vote', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    session_id: currentSessionId,
+                    chosen_model: model
+                }),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => {
+                        throw new Error(err.error || 'Failed to submit vote');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Hide loaders
+                voteButtons.forEach(btn => {
+                    btn.querySelector('.vote-loader').style.display = 'none';
+                    
+                    // Highlight the selected button
+                    if (btn.dataset.model === model) {
+                        btn.classList.add('selected');
+                    }
+                });
+                
+                // Show vote results
+                chosenModelNameElement.textContent = data.chosen_model.name;
+                rejectedModelNameElement.textContent = data.rejected_model.name;
+                voteResultsContainer.style.display = 'block';
+                
+                // Show next round button
+                nextRoundContainer.style.display = 'block';
+                
+                // Show success toast
+                openToast("Vote recorded successfully!", "success");
+            })
+            .catch(error => {
+                // Re-enable vote buttons
+                voteButtons.forEach(btn => {
+                    btn.disabled = false;
+                    btn.querySelector('.vote-loader').style.display = 'none';
+                });
+                
+                openToast(error.message, "error");
+                console.error('Error:', error);
+            });
+        }
+        
+        function resetToInitialState() {
+            // Hide players, results, and next round button
+            playersContainer.style.display = 'none';
+            voteResultsContainer.style.display = 'none';
+            nextRoundContainer.style.display = 'none';
+            
+            // Reset vote buttons
+            voteButtons.forEach(btn => {
+                btn.disabled = true;
+                btn.classList.remove('selected');
+                btn.querySelector('.vote-loader').style.display = 'none';
+            });
+            
+            // Clear text input
+            textInput.value = '';
+            // textInput.focus();
+            
+            // Stop any playing audio
+            audioPlayers.forEach(player => {
+                player.pause();
+                player.currentTime = 0;
+            });
+            
+            // Reset session
+            currentSessionId = null;
+            
+            // Reset the flag for both samples played
+            bothSamplesPlayed = false;
+        }
+        
+        function handleRandom() {
+            // Select a random text from the array
+            const randomText = randomTexts[Math.floor(Math.random() * randomTexts.length)];
+            textInput.value = randomText;
+            textInput.focus();
+        }
+        
+        function showListenToastMessage() {
+            openToast("Please listen to both audio samples before voting", "info");
+        }
+        
+        // Add submit event listener to form
+        synthForm.addEventListener('submit', handleSynthesize);
+        
+        // Add click event listeners to vote buttons
+        voteButtons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                if (bothSamplesPlayed) {
+                    const model = this.dataset.model;
+                    handleVote(model);
+                } else {
+                    showListenToastMessage();
+                }
+            });
+        });
+        
+        // Add keyboard shortcut listeners
+        document.addEventListener('keydown', function(e) {
+            // Only process keyboard shortcuts if text input is not focused
+            if (document.activeElement === textInput) {
+                return;
+            }
+            
+            if (e.key.toLowerCase() === 'a') {
+                if (bothSamplesPlayed && !voteButtons[0].disabled) {
+                    handleVote('a');
+                } else if (playersContainer.style.display !== 'none' && !bothSamplesPlayed) {
+                    showListenToastMessage();
+                }
+            } else if (e.key.toLowerCase() === 'b') {
+                if (bothSamplesPlayed && !voteButtons[1].disabled) {
+                    handleVote('b');
+                } else if (playersContainer.style.display !== 'none' && !bothSamplesPlayed) {
+                    showListenToastMessage();
+                }
+            } else if (e.key.toLowerCase() === 'n') {
+                if (nextRoundContainer.style.display === 'block') {
+                    if (!e.ctrlKey && !e.metaKey) {
+                        e.preventDefault();
+                    }
+                    resetToInitialState();
+                }
+            } else if (e.key.toLowerCase() === 'r') {
+                // Only trigger random if not trying to reload (Ctrl+R or Cmd+R)
+                if (!e.ctrlKey && !e.metaKey) {
+                    e.preventDefault();
+                    handleRandom();
+                }
+            }
+        });
+        
+        // Add event listener for random button
+        randomBtn.addEventListener('click', handleRandom);
+        
+        // Add event listener for next round button
+        nextRoundBtn.addEventListener('click', resetToInitialState);
+    });
+</script>
+{% endblock %}

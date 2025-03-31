@@ -1,0 +1,12 @@
+flask
+flask-login
+flask-sqlalchemy
+python-dotenv
+requests
+authlib
+werkzeug
+flask-limiter
+apscheduler
+gradio-client==0.17.0
+flask-migrate
+gunicorn
