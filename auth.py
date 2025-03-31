@@ -30,7 +30,7 @@ def login():
     next_url = request.args.get("next") or url_for("arena")
     session["next_url"] = next_url
 
-    redirect_uri = url_for("auth.authorize", _external=True)
+    redirect_uri = url_for("auth.authorize", _external=True, _scheme="https")
     return oauth.huggingface.authorize_redirect(redirect_uri)
 
 
