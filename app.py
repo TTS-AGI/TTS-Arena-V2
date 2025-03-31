@@ -16,13 +16,14 @@ from datetime import datetime, timedelta
 from flask_migrate import Migrate
 
 # Check if running in a Huggin Face Space
+IS_SPACES = False
 if os.getenv("SPACE_REPO_NAME"):
-    print("Running in a Huggin Face Space")
+    print("Running in a Hugging Face Space")
     IS_SPACES = True
 
 # Load environment variables
 if not IS_SPACES:
-    load_dotenv() # Only load .env if not running in a Huggin Face Space
+    load_dotenv() # Only load .env if not running in a Hugging Face Space
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-key-change-in-production")
@@ -30,6 +31,8 @@ app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
     "DATABASE_URI", "sqlite:///tts_arena.db"
 )
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["SESSION_COOKIE_SECURE"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
 migrate = Migrate(app, db)
 
@@ -257,22 +260,21 @@ def cleanup_session(session_id):
 
 
 # Schedule periodic cleanup
-with app.app_context():
-    def setup_cleanup():
-        def cleanup_expired_sessions():
-            current_time = datetime.utcnow()
-            expired_sessions = [
-                sid for sid, session in tts_sessions.items()
-                if current_time > session["expires_at"]
-            ]
-            for sid in expired_sessions:
-                cleanup_session(sid)
-        
-        # Run cleanup every 15 minutes
-        from apscheduler.schedulers.background import BackgroundScheduler
-        scheduler = BackgroundScheduler()
-        scheduler.add_job(cleanup_expired_sessions, 'interval', minutes=15)
-        scheduler.start()
+def setup_cleanup():
+    def cleanup_expired_sessions():
+        current_time = datetime.utcnow()
+        expired_sessions = [
+            sid for sid, session in tts_sessions.items()
+            if current_time > session["expires_at"]
+        ]
+        for sid in expired_sessions:
+            cleanup_session(sid)
+    
+    # Run cleanup every 15 minutes
+    from apscheduler.schedulers.background import BackgroundScheduler
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(cleanup_expired_sessions, 'interval', minutes=15)
+    scheduler.start()
 
 
 @app.cli.command("init-db")
@@ -287,7 +289,9 @@ if __name__ == "__main__":
     with app.app_context():
         db.create_all()  # Create tables if they don't exist
         insert_initial_models()
-    # debug: app.run(host="0.0.0.0", debug=True, ssl_context="adhoc")
+        # Call setup_cleanup to start the background scheduler
+        setup_cleanup()
+        
     # Configure Flask to recognize HTTPS when behind a reverse proxy
     from werkzeug.middleware.proxy_fix import ProxyFix
     
