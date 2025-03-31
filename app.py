@@ -288,5 +288,14 @@ if __name__ == "__main__":
         db.create_all()  # Create tables if they don't exist
         insert_initial_models()
     # debug: app.run(host="0.0.0.0", debug=True, ssl_context="adhoc")
+
+    # Configure Flask to recognize HTTPS when behind a reverse proxy
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+    
+    # Set up session to use HTTPS
+    app.config['SESSION_COOKIE_SECURE'] = True
+    app.config['PREFERRED_URL_SCHEME'] = 'https'
+    
     from waitress import serve
     serve(app, host='0.0.0.0', port=int(os.environ.get("PORT", 7860)))
