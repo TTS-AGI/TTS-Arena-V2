@@ -10,3 +10,4 @@ apscheduler
 gradio-client==0.17.0
 flask-migrate
 gunicorn
+waitress

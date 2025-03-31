@@ -288,5 +288,5 @@ if __name__ == "__main__":
         db.create_all()  # Create tables if they don't exist
         insert_initial_models()
     # debug: app.run(host="0.0.0.0", debug=True, ssl_context="adhoc")
-    import gunicorn
-    gunicorn.run(app, host="0.0.0.0", debug=True, ssl_context="adhoc")
+    from waitress import serve
+    serve(app, host='0.0.0.0', port=int(os.environ.get("PORT", 7860)))
