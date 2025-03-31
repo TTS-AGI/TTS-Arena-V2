@@ -1,8 +1,9 @@
 # TODO: V2 of TTS Router
 # Currently just use current TTS router.
 from gradio_client import Client
+import os
 
-client = Client("TTS-AGI/tts-router")
+client = Client("TTS-AGI/tts-router", hf_token=os.getenv("HF_TOKEN"))
 model_mapping = {
     "eleven-multilingual-v2": "eleven",
     "playht-2.0": "playht",

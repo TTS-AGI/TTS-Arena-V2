@@ -9,3 +9,8 @@ short_description: (Private) Vote on the latest TTS models!
 
 hf_oauth: true
 ---
+
+TODO:
+
+- Backup DB to database - right now database is deleted every time Space is restarted.
+- Auto-sync to HF Spaces from GitHub
