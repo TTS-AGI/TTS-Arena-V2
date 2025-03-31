@@ -1,0 +1,38 @@
+name: Sync to Hugging Face Space
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  sync-to-hf:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Git
+        run: |
+          git config --global user.email "actions@github.com"
+          git config --global user.name "GitHub Actions"
+
+      - name: Push to Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          # Replace these with your HF username and space name
+          HF_USERNAME="TTS-AGI"
+          SPACE_NAME="TTS-Arena-V2"
+
+          # Clone the HF space repo
+          git clone https://$HF_USERNAME:$HF_TOKEN@huggingface.co/spaces/$HF_USERNAME/$SPACE_NAME hf-space
+          
+          # Copy all files to the space repo (except .git)
+          rsync -av --exclude='.git' ./ hf-space/
+
+          cd hf-space
+          git add .
+          git commit -m "Sync from GitHub repo" || echo "No changes to commit"
+          git push
