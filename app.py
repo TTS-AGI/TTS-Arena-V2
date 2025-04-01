@@ -339,12 +339,12 @@ def init_db():
 
 if __name__ == "__main__":
     with app.app_context():
+        # Setup database sync for HF Spaces
+        setup_database_sync()
         db.create_all()  # Create tables if they don't exist
         insert_initial_models()
         # Call setup_cleanup to start the background scheduler
         setup_cleanup()
-        # Setup database sync for HF Spaces
-        setup_database_sync()
         
     # Configure Flask to recognize HTTPS when behind a reverse proxy
     from werkzeug.middleware.proxy_fix import ProxyFix
