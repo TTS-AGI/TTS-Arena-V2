@@ -266,12 +266,18 @@ def insert_initial_models():
             model_type=ModelType.TTS,
             is_open=False,
         ),
-        # Model(
-        #     id="playht-2.0",
-        #     name="PlayHT 2.0",
-        #     model_type=ModelType.TTS,
-        #     is_open=False,
-        # ),
+        Model(
+            id="playht-2.0",
+            name="PlayHT 2.0",
+            model_type=ModelType.TTS,
+            is_open=False,
+        ),
+        Model(
+            id="playht-3.0-mini",
+            name="PlayHT 3.0 Mini",
+            model_type=ModelType.TTS,
+            is_open=False,
+        ),
         Model(
             id="styletts2",
             name="StyleTTS 2",

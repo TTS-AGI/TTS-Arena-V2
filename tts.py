@@ -10,6 +10,7 @@ model_mapping = {
     "styletts2": "styletts2",
     "kokoro-v1": "kokorov1",
     "cosyvoice-2.0": "cosyvoice",
+    "playht-3.0-mini": "playht3",
 }
 def predict_tts(text, model):
     global client
