@@ -28,14 +28,18 @@ class Model(db.Model):
     name = db.Column(db.String(100), nullable=False)
     model_type = db.Column(db.String(20), nullable=False)  # 'tts' or 'conversational'
     # Fix ambiguous foreign keys by specifying which foreign key to use
-    votes = db.relationship("Vote", 
-                           primaryjoin="or_(Model.id==Vote.model_chosen, Model.id==Vote.model_rejected)",
-                           viewonly=True)
+    votes = db.relationship(
+        "Vote",
+        primaryjoin="or_(Model.id==Vote.model_chosen, Model.id==Vote.model_rejected)",
+        viewonly=True,
+    )
     current_elo = db.Column(db.Float, default=1500.0)
     win_count = db.Column(db.Integer, default=0)
     match_count = db.Column(db.Integer, default=0)
     is_open = db.Column(db.Boolean, default=False)
-    is_active = db.Column(db.Boolean, default=True) # Whether the model is active and can be voted on
+    is_active = db.Column(
+        db.Boolean, default=True
+    )  # Whether the model is active and can be voted on
 
     @property
     def win_rate(self):
@@ -302,7 +306,9 @@ def insert_initial_models():
     all_models = tts_models + conversational_models
 
     for model in all_models:
-        existing = Model.query.filter_by(id=model.id, model_type=model.model_type).first()
+        existing = Model.query.filter_by(
+            id=model.id, model_type=model.model_type
+        ).first()
         if not existing:
             db.session.add(model)
         else:

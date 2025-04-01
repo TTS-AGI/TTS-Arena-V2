@@ -12,13 +12,13 @@ model_mapping = {
     "cosyvoice-2.0": "cosyvoice",
     "playht-3.0-mini": "playht3",
 }
+
+
 def predict_tts(text, model):
     global client
     if not model in model_mapping:
         raise ValueError(f"Model {model} not found")
     result = client.predict(
-        text=text,
-        model=model_mapping[model],
-        api_name="/synthesize"
-    ) # returns path to audio file
+        text=text, model=model_mapping[model], api_name="/synthesize"
+    )  # returns path to audio file
     return result
