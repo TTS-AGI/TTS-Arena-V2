@@ -603,6 +603,77 @@
         html {
             scroll-behavior: smooth;
         }
+
+        /* Dark mode styles */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --primary-color: #6c63ff;
+                --secondary-color: #2d2b38;
+                --text-color: #e0e0e0;
+                --light-gray: #1e1e24;
+                --border-color: #3a3a45;
+                --shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+                --success-color: #10b981;
+                --info-color: #60a5fa;
+                --warning-color: #f59e0b;
+                --error-color: #ef4444;
+            }
+            
+            body {
+                background-color: #121218;
+                color: var(--text-color);
+            }
+            
+            .sidebar {
+                background-color: var(--light-gray);
+                border-right-color: var(--border-color);
+            }
+            
+            .nav-item.active {
+                background-color: rgba(108, 99, 255, 0.2);
+            }
+            
+            .nav-item:hover:not(.active) {
+                background-color: rgba(255, 255, 255, 0.05);
+            }
+            
+            .text-input, 
+            .select-input,
+            .textarea {
+                background-color: var(--light-gray);
+                color: var(--text-color);
+                border-color: var(--border-color);
+            }
+            
+            .card {
+                background-color: var(--light-gray);
+                border-color: var(--border-color);
+            }
+            
+            .tab.active::after {
+                background-color: var(--primary-color);
+            }
+            
+            ::-webkit-scrollbar-track {
+                background: var(--secondary-color);
+            }
+            
+            ::-webkit-scrollbar-thumb {
+                background: rgba(180, 180, 180, 0.5);
+            }
+            
+            ::-webkit-scrollbar-thumb:hover {
+                background: rgba(200, 200, 200, 0.7);
+            }
+            
+            * {
+                scrollbar-color: rgba(180, 180, 180, 0.5) var(--secondary-color);
+            }
+            
+            ::-webkit-scrollbar-corner {
+                background: var(--secondary-color);
+            }
+        }
     </style>
 </head>
 

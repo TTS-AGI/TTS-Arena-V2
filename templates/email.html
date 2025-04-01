@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Preferences - TTS Arena</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #5046e5;
+            --secondary-color: #f0f0f0;
+            --text-color: #333;
+            --light-gray: #f5f5f5;
+            --border-color: #e0e0e0;
+            --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            --radius: 8px;
+            --success-color: #10b981;
+            --info-color: #3b82f6;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            color: var(--text-color);
+            background-color: var(--light-gray);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+            background-color: white;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 40px;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 24px;
+            color: var(--primary-color);
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        p {
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+
+        .btn-container {
+            display: flex;
+            gap: 16px;
+            margin-top: 32px;
+        }
+
+        .btn {
+            flex: 1;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            padding: 12px 24px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.2s;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            background-color: #4038c7;
+        }
+
+        .btn-secondary {
+            background-color: white;
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--light-gray);
+        }
+
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .footer a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        /* Responsive styles */
+        @media (max-width: 768px) {
+            .container {
+                padding: 30px 20px;
+            }
+
+            h1 {
+                font-size: 22px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .btn-container {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .btn {
+                width: 100%;
+            }
+
+            .container {
+                padding: 25px 15px;
+            }
+
+            h1 {
+                font-size: 20px;
+            }
+
+            .logo {
+                font-size: 22px;
+                margin-bottom: 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="logo">TTS Arena</div>
+        <h1>Email Updates</h1>
+        <p>
+            Would you mind receiving occasional email updates about TTS Arena? We'll keep you informed about new models, 
+            improvements, and important announcements.
+        </p>
+        <p>
+            We respect your privacy and promise not to spam your inbox. You can unsubscribe at any time. If you choose not to receive updates, we won't ask you again.
+        </p>
+        <div class="btn-container">
+            <a href="{{ url_for('subscribe_email', choice='yes') }}" class="btn">Yes, I'd like updates</a>
+            <a href="{{ url_for('subscribe_email', choice='no') }}" class="btn btn-secondary">No, thanks</a>
+        </div>
+    </div>
+</body>
+
+</html>
+
