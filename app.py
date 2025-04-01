@@ -33,6 +33,7 @@ app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SESSION_COOKIE_SECURE"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "None" if IS_SPACES else "Lax" # HF Spaces uses iframes to load the app, so we need to set SAMESITE to None
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)  # Set to desired duration
 
 migrate = Migrate(app, db)
 

@@ -58,7 +58,7 @@ def authorize():
             db.session.commit()
 
         # Log in the user
-        login_user(user)
+        login_user(user, remember=True)
 
         # Redirect to the original page or default
         next_url = session.pop("next_url", url_for("arena"))

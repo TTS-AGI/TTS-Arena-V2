@@ -674,7 +674,7 @@
             </div>
         </div>
         {% else %}
-        <a href="{{ url_for('auth.login') }}" class="login-link">
+        <a href="{{ url_for('auth.login', next=request.path) }}" class="login-link">
             <img src="{{ url_for('static', filename='huggingface.svg') }}" alt="Hugging Face">
             Login
         </a>
