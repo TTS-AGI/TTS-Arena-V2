@@ -26,7 +26,7 @@ if not IS_SPACES:
     load_dotenv() # Only load .env if not running in a Hugging Face Space
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-key-change-in-production")
+app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", os.urandom(24))
 app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
     "DATABASE_URI", "sqlite:///tts_arena.db"
 )
