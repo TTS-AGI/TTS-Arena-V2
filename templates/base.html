@@ -685,38 +685,21 @@
                 border-color: transparent;
             }
 
-            /* Fix vote recorded background and text */
-            .vote-results {
+            /* Fix loading state in dark mode */
+            .vote-btn:disabled,
+            .vote-btn.loading {
                 background-color: var(--light-gray);
-                border: 1px solid var(--border-color);
-            }
-
-            .results-heading {
-                color: var(--primary-color);
-            }
-
-            .results-content {
-                color: var(--text-color);
-            }
-
-            .chosen-model strong,
-            .rejected-model strong {
-                color: var(--text-color);
-            }
-
-            .chosen-model span,
-            .rejected-model span {
-                color: var(--text-color);
-            }
-
-            /* Ensure border-radius is maintained during loading state */
-            .vote-btn.loading,
-            .vote-btn:disabled {
                 border-radius: var(--radius);
             }
 
             .vote-loader {
+                background-color: var(--light-gray);
                 border-radius: var(--radius);
+            }
+
+            .vote-spinner {
+                border-color: rgba(108, 99, 255, 0.3);
+                border-top-color: var(--primary-color);
             }
 
             .toast {
