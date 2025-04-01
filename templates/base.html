@@ -93,10 +93,15 @@
             flex: 1;
             padding: 32px;
             width: 100%;
-            max-width: 1200px;
             margin: 0 auto;
             overflow-y: auto;
             height: 100vh;
+        }
+
+        .main-content-inner {
+            max-width: 1200px;
+            width: 100%;
+            margin: 0 auto;
         }
 
         .tabs {
@@ -697,7 +702,9 @@
             {% endif %}
         {% endwith %}
         
-        {% block content %}{% endblock %}
+        <div class="main-content-inner">
+            {% block content %}{% endblock %}
+        </div>
     </div>
 
     <!-- Toast container -->
