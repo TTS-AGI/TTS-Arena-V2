@@ -322,7 +322,57 @@
         }
     }
 
-    
+    /* Dark mode styles */
+    @media (prefers-color-scheme: dark) {
+        .leaderboard-container {
+            background-color: var(--light-gray);
+            border-color: var(--border-color);
+        }
+        
+        .leaderboard-header {
+            background-color: rgba(80, 70, 229, 0.1);
+            border-color: var(--border-color);
+        }
+        
+        .leaderboard-row {
+            border-color: var(--border-color);
+        }
+        
+        .leaderboard-row:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+        
+        .tier-s {
+            background-color: rgba(255, 215, 0, 0.1);
+        }
+        
+        .tier-a {
+            background-color: rgba(192, 192, 192, 0.1);
+        }
+        
+        .tier-b {
+            background-color: rgba(205, 127, 50, 0.1);
+        }
+        
+        .segmented-control {
+            background-color: var(--light-gray);
+            border-color: var(--border-color);
+        }
+        
+        .segmented-control label {
+            color: var(--text-color);
+        }
+        
+        .segmented-control .slider {
+            background-color: var(--primary-color);
+        }
+        
+        .tooltip {
+            background-color: var(--light-gray);
+            color: var(--text-color);
+            border-color: var(--border-color);
+        }
+    }
 </style>
 {% endblock %}
 
