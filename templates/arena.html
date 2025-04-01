@@ -433,6 +433,69 @@
             display: block;
         }
     }
+    /* Dark mode styles */
+    @media (prefers-color-scheme: dark) {
+        .coming-soon-container {
+            background-color: var(--light-gray);
+        }
+        
+        .coming-soon-text {
+            color: #aaa;
+        }
+        
+        .model-name-display {
+            color: #aaa;
+        }
+        
+        .vote-btn {
+            background-color: var(--light-gray);
+            color: var(--text-color);
+            border-color: var(--border-color);
+        }
+        
+        .vote-btn:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-color: var(--border-color);
+        }
+        
+        .vote-btn.selected {
+            background-color: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+        
+        .shortcut-key {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: var(--text-color);
+            border-color: var(--border-color);
+        }
+        
+        .vote-btn.selected .shortcut-key {
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+            border-color: transparent;
+        }
+        
+        .random-btn {
+            background-color: var(--light-gray);
+            color: var(--text-color);
+            border-color: var(--border-color);
+        }
+        
+        .random-btn:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .vote-recorded {
+            background-color: var(--light-gray);
+            border-color: var(--border-color);
+        }
+        
+        /* Ensure border-radius is maintained during loading state */
+        .vote-btn.loading {
+            border-radius: var(--radius);
+        }
+    }
 </style>
 {% endblock %} 
 
