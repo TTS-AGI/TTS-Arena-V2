@@ -278,6 +278,53 @@ def setup_cleanup():
     scheduler.start()
 
 
+def setup_database_sync():
+    """Setup database synchronization with HF dataset for Spaces"""
+    if not IS_SPACES:
+        return
+    
+    import os.path
+    from huggingface_hub import HfApi, hf_hub_download
+    from apscheduler.schedulers.background import BackgroundScheduler
+    
+    db_path = app.config["SQLALCHEMY_DATABASE_URI"].replace("sqlite:///", "instance/")
+    
+    def sync_database():
+        try:
+            # Upload the database to HF dataset
+            api = HfApi(token=os.getenv("HF_TOKEN"))
+            api.upload_file(
+                path_or_fileobj=db_path,
+                path_in_repo="tts_arena.db",
+                repo_id="TTS-AGI/database-arena-v2",
+                repo_type="dataset"
+            )
+            print(f"Database uploaded to HF dataset at {datetime.utcnow()}")
+        except Exception as e:
+            print(f"Error uploading database to HF dataset: {str(e)}")
+    
+    # Download database if it doesn't exist
+    if not os.path.exists(db_path):
+        try:
+            print("Database not found, downloading from HF dataset...")
+            hf_hub_download(
+                repo_id="TTS-AGI/database-arena-v2",
+                filename="tts_arena.db",
+                repo_type="dataset",
+                local_dir=os.path.dirname(db_path),
+                token=os.getenv("HF_TOKEN")
+            )
+            print("Database downloaded successfully")
+        except Exception as e:
+            print(f"Error downloading database from HF dataset: {str(e)}")
+    
+    # Schedule periodic uploads
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(sync_database, 'interval', minutes=5)
+    scheduler.start()
+    print("Database sync scheduler started")
+
+
 @app.cli.command("init-db")
 def init_db():
     """Initialize the database."""
@@ -292,6 +339,8 @@ if __name__ == "__main__":
         insert_initial_models()
         # Call setup_cleanup to start the background scheduler
         setup_cleanup()
+        # Setup database sync for HF Spaces
+        setup_database_sync()
         
     # Configure Flask to recognize HTTPS when behind a reverse proxy
     from werkzeug.middleware.proxy_fix import ProxyFix
