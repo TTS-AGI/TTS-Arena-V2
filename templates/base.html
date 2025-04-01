@@ -653,6 +653,77 @@
             .tab.active::after {
                 background-color: var(--primary-color);
             }
+
+            /* Fix vote buttons in dark mode */
+            .vote-btn {
+                background-color: var(--light-gray);
+                color: var(--text-color);
+                border-color: var(--border-color);
+            }
+
+            .vote-btn:hover {
+                background-color: rgba(255, 255, 255, 0.1);
+                border-color: var(--border-color);
+            }
+
+            .vote-btn.selected {
+                background-color: var(--primary-color);
+                color: white;
+                border-color: var(--primary-color);
+            }
+
+            .shortcut-key {
+                background-color: rgba(255, 255, 255, 0.1);
+                color: var(--text-color);
+                border-color: var(--border-color);
+            }
+
+            .vote-btn.selected .shortcut-key {
+                background-color: rgba(255, 255, 255, 0.2);
+                color: white;
+                border-color: transparent;
+            }
+
+            /* Fix vote recorded background */
+            .vote-recorded {
+                background-color: var(--light-gray);
+                border-color: var(--border-color);
+            }
+
+            /* Ensure border-radius is maintained during loading state */
+            .vote-btn.loading {
+                border-radius: var(--radius);
+            }
+
+            /* Fix toast colors in dark mode */
+            .toast {
+                background-color: var(--light-gray);
+                border: 1px solid var(--border-color);
+            }
+
+            .toast.info {
+                border-left: 4px solid var(--info-color);
+            }
+
+            .toast.success {
+                border-left: 4px solid var(--success-color);
+            }
+
+            .toast.warning {
+                border-left: 4px solid var(--warning-color);
+            }
+
+            .toast.error {
+                border-left: 4px solid var(--error-color);
+            }
+
+            .toast-content {
+                color: var(--text-color);
+            }
+
+            .toast-close {
+                color: var(--text-color);
+            }
             
             ::-webkit-scrollbar-track {
                 background: var(--secondary-color);
