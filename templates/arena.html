@@ -582,14 +582,6 @@
             .then(data => {
                 currentSessionId = data.session_id;
                 
-                // Store model names
-                if (data.model_a && data.model_a.name) {
-                    modelNames.a = data.model_a.name;
-                }
-                if (data.model_b && data.model_b.name) {
-                    modelNames.b = data.model_b.name;
-                }
-                
                 // Set audio sources
                 audioPlayers[0].src = data.audio_a;
                 audioPlayers[1].src = data.audio_b;
@@ -665,6 +657,19 @@
                         btn.classList.add('selected');
                     }
                 });
+
+
+                // Store model names from vote response
+                if (data.chosen_model && data.chosen_model.name) {
+                    const chosenModel = data.chosen_model.id;
+                    if (chosenModel === 'a') {
+                        modelNames.a = data.chosen_model.name;
+                        modelNames.b = data.rejected_model.name;
+                    } else {
+                        modelNames.b = data.chosen_model.name;
+                        modelNames.a = data.rejected_model.name;
+                    }
+                }
                 
                 // Now display model names after voting
                 modelNameDisplays[0].textContent = modelNames.a ? `(${modelNames.a})` : '';
