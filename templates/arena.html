@@ -555,7 +555,7 @@
                 btn.querySelector('.vote-loader').style.display = 'none';
             });
             
-            // Reset model name displays
+            // Clear model name displays
             modelNameDisplays.forEach(display => {
                 display.textContent = '';
             });
@@ -616,10 +616,7 @@
                         btn.disabled = false;
                     });
                     
-                    // Display model names
-                    modelNameDisplays[0].textContent = modelNames.a ? `(${modelNames.a})` : '';
-                    modelNameDisplays[1].textContent = modelNames.b ? `(${modelNames.b})` : '';
-                    
+                    // Don't display model names until after voting
                     audioPlayers[1].removeEventListener('ended', onEndedB);
                 });
             })
@@ -668,6 +665,10 @@
                         btn.classList.add('selected');
                     }
                 });
+                
+                // Now display model names after voting
+                modelNameDisplays[0].textContent = modelNames.a ? `(${modelNames.a})` : '';
+                modelNameDisplays[1].textContent = modelNames.b ? `(${modelNames.b})` : '';
                 
                 // Show vote results
                 chosenModelNameElement.textContent = data.chosen_model.name;
