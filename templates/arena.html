@@ -47,7 +47,7 @@
 
     <div class="players-container" style="display: none;">
         <div class="player">
-            <div class="player-label">Model A</div>
+            <div class="player-label">Model A <span class="model-name-display"></span></div>
             <audio controls class="audio-player"></audio>
             <button class="vote-btn" data-model="a" disabled>
                 Vote for A
@@ -59,7 +59,7 @@
         </div>
 
         <div class="player">
-            <div class="player-label">Model B</div>
+            <div class="player-label">Model B <span class="model-name-display"></span></div>
             <audio controls class="audio-player"></audio>
             <button class="vote-btn" data-model="b" disabled>
                 Vote for B
@@ -414,6 +414,12 @@
         line-height: 1.5;
     }
     
+    .model-name-display {
+        font-size: 0.9em;
+        color: #666;
+        font-style: italic;
+    }
+    
     @media (max-width: 768px) {
         .input-group {
             border-radius: var(--radius);
@@ -449,9 +455,11 @@
         const voteResultsContainer = document.querySelector('.vote-results');
         const chosenModelNameElement = document.querySelector('.chosen-model-name');
         const rejectedModelNameElement = document.querySelector('.rejected-model-name');
+        const modelNameDisplays = document.querySelectorAll('.model-name-display');
         
         let bothSamplesPlayed = false;
         let currentSessionId = null;
+        let modelNames = { a: '', b: '' };
         
         // Random text options
         const randomTexts = [
@@ -547,6 +555,11 @@
                 btn.querySelector('.vote-loader').style.display = 'none';
             });
             
+            // Reset model name displays
+            modelNameDisplays.forEach(display => {
+                display.textContent = '';
+            });
+            
             // Reset the flag for both samples played
             bothSamplesPlayed = false;
             
@@ -568,6 +581,14 @@
             })
             .then(data => {
                 currentSessionId = data.session_id;
+                
+                // Store model names
+                if (data.model_a && data.model_a.name) {
+                    modelNames.a = data.model_a.name;
+                }
+                if (data.model_b && data.model_b.name) {
+                    modelNames.b = data.model_b.name;
+                }
                 
                 // Set audio sources
                 audioPlayers[0].src = data.audio_a;
@@ -594,6 +615,11 @@
                     voteButtons.forEach(btn => {
                         btn.disabled = false;
                     });
+                    
+                    // Display model names
+                    modelNameDisplays[0].textContent = modelNames.a ? `(${modelNames.a})` : '';
+                    modelNameDisplays[1].textContent = modelNames.b ? `(${modelNames.b})` : '';
+                    
                     audioPlayers[1].removeEventListener('ended', onEndedB);
                 });
             })
@@ -678,6 +704,14 @@
                 btn.classList.remove('selected');
                 btn.querySelector('.vote-loader').style.display = 'none';
             });
+            
+            // Clear model name displays
+            modelNameDisplays.forEach(display => {
+                display.textContent = '';
+            });
+            
+            // Reset model names
+            modelNames = { a: '', b: '' };
             
             // Clear text input
             textInput.value = '';
