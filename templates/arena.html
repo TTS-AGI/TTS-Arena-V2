@@ -661,14 +661,8 @@
 
                 // Store model names from vote response
                 if (data.chosen_model && data.chosen_model.name) {
-                    const chosenModel = data.chosen_model.id;
-                    if (chosenModel === 'a') {
-                        modelNames.a = data.chosen_model.name;
-                        modelNames.b = data.rejected_model.name;
-                    } else {
-                        modelNames.b = data.chosen_model.name;
-                        modelNames.a = data.rejected_model.name;
-                    }
+                    modelNames.a = data.names.a;
+                    modelNames.b = data.names.b;
                 }
                 
                 // Now display model names after voting

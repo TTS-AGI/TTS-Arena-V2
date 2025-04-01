@@ -239,6 +239,10 @@ def submit_vote():
         "rejected_model": {
             "id": rejected_id,
             "name": Model.query.get(rejected_id).name
+        },
+        "names": {
+            "a": Model.query.get(chosen_id).name if chosen_model == "a" else Model.query.get(rejected_id).name,
+            "b": Model.query.get(rejected_id).name if chosen_model == "a" else Model.query.get(chosen_id).name
         }
     })
 
