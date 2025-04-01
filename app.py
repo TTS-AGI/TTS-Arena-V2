@@ -14,7 +14,8 @@ import random
 import json
 from datetime import datetime, timedelta
 from flask_migrate import Migrate
-
+from huggingface_hub import HfApi, hf_hub_download
+from apscheduler.schedulers.background import BackgroundScheduler
 # Check if running in a Huggin Face Space
 IS_SPACES = False
 if os.getenv("SPACE_REPO_NAME"):
@@ -288,8 +289,6 @@ def setup_database_sync():
         return
     
     import os.path
-    from huggingface_hub import HfApi, hf_hub_download
-    from apscheduler.schedulers.background import BackgroundScheduler
     
     db_path = app.config["SQLALCHEMY_DATABASE_URI"].replace("sqlite:///", "instance/")
     
@@ -306,21 +305,6 @@ def setup_database_sync():
             print(f"Database uploaded to HF dataset at {datetime.utcnow()}")
         except Exception as e:
             print(f"Error uploading database to HF dataset: {str(e)}")
-    
-    # Download database if it doesn't exist
-    if not os.path.exists(db_path):
-        try:
-            print("Database not found, downloading from HF dataset...")
-            hf_hub_download(
-                repo_id="TTS-AGI/database-arena-v2",
-                filename="tts_arena.db",
-                repo_type="dataset",
-                local_dir=os.path.dirname(db_path),
-                token=os.getenv("HF_TOKEN")
-            )
-            print("Database downloaded successfully")
-        except Exception as e:
-            print(f"Error downloading database from HF dataset: {str(e)}")
     
     # Schedule periodic uploads
     scheduler = BackgroundScheduler()
@@ -339,7 +323,24 @@ def init_db():
 
 if __name__ == "__main__":
     with app.app_context():
-        # Setup database sync for HF Spaces
+        # Download database if it doesn't exist
+        if IS_SPACES:
+            # Setup database sync for HF Spaces
+            if not os.path.exists('instance/tts_arena.db'):
+                os.makedirs('instance', exist_ok=True)
+                try:
+                    print("Database not found, downloading from HF dataset...")
+                    hf_hub_download(
+                        repo_id="TTS-AGI/database-arena-v2",
+                        filename="tts_arena.db",
+                        repo_type="dataset",
+                        local_dir='instance',
+                        token=os.getenv("HF_TOKEN")
+                    )
+                    print("Database downloaded successfully")
+                except Exception as e:
+                    print(f"Error downloading database from HF dataset: {str(e)}")
+    
         setup_database_sync()
         db.create_all()  # Create tables if they don't exist
         insert_initial_models()
