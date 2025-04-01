@@ -522,7 +522,7 @@
         <div class="login-prompt-close">&times;</div>
         <h3>Login Required</h3>
         <p>You need to be logged in to view your personal leaderboard.</p>
-        <a href="{{ url_for('auth.login') }}" class="btn">Login with Hugging Face</a>
+        <a href="{{ url_for('auth.login', next=request.path) }}" class="btn">Login with Hugging Face</a>
     </div>
 </div>
 
