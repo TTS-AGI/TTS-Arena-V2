@@ -1,3 +1,4 @@
+import os
 from huggingface_hub import HfApi, hf_hub_download
 from apscheduler.schedulers.background import BackgroundScheduler
 # Check if running in a Huggin Face Space
@@ -5,7 +6,7 @@ IS_SPACES = False
 if os.getenv("SPACE_REPO_NAME"):
     print("Running in a Hugging Face Space")
     IS_SPACES = True
-    
+
     # Setup database sync for HF Spaces
     if not os.path.exists('instance/tts_arena.db'):
         os.makedirs('instance', exist_ok=True)
