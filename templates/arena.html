@@ -48,7 +48,7 @@
     <div class="players-container" style="display: none;">
         <div class="player">
             <div class="player-label">Model A <span class="model-name-display"></span></div>
-            <audio controls class="audio-player"></audio>
+            <div class="wave-player-container" data-model="a"></div>
             <button class="vote-btn" data-model="a" disabled>
                 Vote for A
                 <span class="shortcut-key">A</span>
@@ -60,7 +60,7 @@
 
         <div class="player">
             <div class="player-label">Model B <span class="model-name-display"></span></div>
-            <audio controls class="audio-player"></audio>
+            <div class="wave-player-container" data-model="b"></div>
             <button class="vote-btn" data-model="b" disabled>
                 Vote for B
                 <span class="shortcut-key">B</span>
@@ -68,6 +68,10 @@
                     <div class="vote-spinner"></div>
                 </span>
             </button>
+        </div>
+
+        <div class="keyboard-hint">
+            Press <kbd>Space</kbd> to play/pause audio, <kbd>A</kbd> or <kbd>B</kbd> to vote after listening
         </div>
     </div>
 
@@ -102,6 +106,8 @@
 {% endblock %}
 
 {% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/waveplayer.css') }}">
+<script src="https://unpkg.com/wavesurfer.js@6/dist/wavesurfer.min.js"></script>
 <style>
     .input-container {
         display: flex;
@@ -419,6 +425,37 @@
         color: #666;
         font-style: italic;
     }
+
+    /* WaveSurfer Custom Styles */
+    .player {
+        padding-bottom: 20px;
+    }
+
+    .wave-player-container {
+        margin-bottom: 16px;
+    }
+
+    /* Keyboard shortcut hint */
+    .keyboard-hint {
+        text-align: center;
+        margin-top: 8px;
+        font-size: 13px;
+        color: #888;
+    }
+
+    .keyboard-hint kbd {
+        display: inline-block;
+        padding: 3px 5px;
+        font-size: 11px;
+        line-height: 10px;
+        color: #444;
+        vertical-align: middle;
+        background-color: #fafafa;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        box-shadow: 0 1px 0 rgba(0,0,0,0.2);
+        margin: 0 2px;
+    }
     
     @media (max-width: 768px) {
         .input-group {
@@ -524,11 +561,24 @@
         .vote-btn.loading {
             border-radius: var(--radius);
         }
+
+        /* Dark mode keyboard hint */
+        .keyboard-hint {
+            color: #aaa;
+        }
+
+        .keyboard-hint kbd {
+            color: #ddd;
+            background-color: #333;
+            border-color: #555;
+            box-shadow: 0 1px 0 rgba(255,255,255,0.1);
+        }
     }
 </style>
 {% endblock %} 
 
 {% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/waveplayer.js') }}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const synthForm = document.querySelector('.input-container');
@@ -541,17 +591,24 @@
         const nextRoundBtn = document.querySelector('.next-round-btn');
         const nextRoundContainer = document.querySelector('.next-round-container');
         const randomBtn = document.querySelector('.random-btn');
-        const audioPlayers = document.querySelectorAll('.audio-player');
         const tabs = document.querySelectorAll('.tab');
         const tabContents = document.querySelectorAll('.tab-content');
         const voteResultsContainer = document.querySelector('.vote-results');
         const chosenModelNameElement = document.querySelector('.chosen-model-name');
         const rejectedModelNameElement = document.querySelector('.rejected-model-name');
         const modelNameDisplays = document.querySelectorAll('.model-name-display');
+        const wavePlayerContainers = document.querySelectorAll('.wave-player-container');
         
         let bothSamplesPlayed = false;
         let currentSessionId = null;
         let modelNames = { a: '', b: '' };
+        let wavePlayers = { a: null, b: null };
+        
+        // Initialize WavePlayers
+        wavePlayerContainers.forEach(container => {
+            const model = container.dataset.model;
+            wavePlayers[model] = new WavePlayer(container);
+        });
         
         // Random text options
         const randomTexts = [
@@ -674,34 +731,33 @@
             .then(data => {
                 currentSessionId = data.session_id;
                 
-                // Set audio sources
-                audioPlayers[0].src = data.audio_a;
-                audioPlayers[1].src = data.audio_b;
+                // Load audio in waveplayers
+                wavePlayers.a.loadAudio(data.audio_a);
+                wavePlayers.b.loadAudio(data.audio_b);
                 
                 // Show players
                 loadingContainer.style.display = 'none';
                 playersContainer.style.display = 'flex';
                 
-                // Play audio A automatically
-                const audioPlayerA = audioPlayers[0];
-                audioPlayerA.play();
-                
-                // When audio A ends, play audio B
-                audioPlayerA.addEventListener('ended', function onEndedA() {
-                    const audioPlayerB = audioPlayers[1];
-                    audioPlayerB.play();
-                    audioPlayerA.removeEventListener('ended', onEndedA);
-                });
-                
-                // When audio B ends, enable vote buttons
-                audioPlayers[1].addEventListener('ended', function onEndedB() {
-                    bothSamplesPlayed = true;
-                    voteButtons.forEach(btn => {
-                        btn.disabled = false;
-                    });
+                // Setup automatic sequential playback
+                wavePlayers.a.wavesurfer.once('ready', function() {
+                    wavePlayers.a.play();
                     
-                    // Don't display model names until after voting
-                    audioPlayers[1].removeEventListener('ended', onEndedB);
+                    // When audio A ends, play audio B
+                    wavePlayers.a.wavesurfer.once('finish', function() {
+                        // Wait a short moment before playing B
+                        setTimeout(() => {
+                            wavePlayers.b.play();
+                            
+                            // When audio B ends, enable voting
+                            wavePlayers.b.wavesurfer.once('finish', function() {
+                                bothSamplesPlayed = true;
+                                voteButtons.forEach(btn => {
+                                    btn.disabled = false;
+                                });
+                            });
+                        }, 500);
+                    });
                 });
             })
             .catch(error => {
@@ -807,13 +863,13 @@
             
             // Clear text input
             textInput.value = '';
-            // textInput.focus();
             
-            // Stop any playing audio
-            audioPlayers.forEach(player => {
-                player.pause();
-                player.currentTime = 0;
-            });
+            // Stop any playing audio and destroy wavesurfers
+            for (const model in wavePlayers) {
+                if (wavePlayers[model]) {
+                    wavePlayers[model].stop();
+                }
+            }
             
             // Reset session
             currentSessionId = null;
@@ -879,6 +935,19 @@
                 if (!e.ctrlKey && !e.metaKey) {
                     e.preventDefault();
                     handleRandom();
+                }
+            } else if (e.key === ' ') {
+                // Space to play/pause current audio
+                if (playersContainer.style.display !== 'none') {
+                    e.preventDefault();
+                    // If A is playing, toggle A, else if B is playing, toggle B, else play A
+                    if (wavePlayers.a.isPlaying) {
+                        wavePlayers.a.togglePlayPause();
+                    } else if (wavePlayers.b.isPlaying) {
+                        wavePlayers.b.togglePlayPause();
+                    } else {
+                        wavePlayers.a.play();
+                    }
                 }
             }
         });
