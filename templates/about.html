@@ -139,6 +139,39 @@
     .faq-answer {
         line-height: 1.6;
     }
+    /* Dark mode styles */
+    @media (prefers-color-scheme: dark) {
+        .about-section {
+            background-color: var(--light-gray);
+            border-color: var(--border-color);
+        }
+
+        .about-section p {
+            color: var(--text-color);
+        }
+
+        .citation-box {
+            background-color: var(--secondary-color);
+            border-color: var(--border-color);
+        }
+
+        .copy-citation {
+            background-color: var(--light-gray);
+            border-color: var(--border-color);
+        }
+
+        .copy-citation:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .copy-citation svg {
+            color: var(--text-color);
+        }
+
+        .faq-question {
+            color: var(--primary-color);
+        }
+    }
 
 </style>
 {% endblock %}
