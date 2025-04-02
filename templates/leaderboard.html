@@ -49,6 +49,15 @@
         align-items: center;
         gap: 6px;
     }
+
+    .model-name-link {
+        text-decoration: none;
+        color: var(--text-color);
+    }
+
+    .model-name-link:hover {
+        text-decoration: underline;
+    }
     
     .license-icon {
         width: 12px;
@@ -452,7 +461,7 @@
             <div class="leaderboard-row">
                 <div class="rank">#{{ model.rank }}</div>
                 <div class="model-name">
-                    {{ model.name }}
+                    <a href="{{ model.model_url }}" target="_blank" class="model-name-link">{{ model.name }}</a>
                     <div class="license-icon">
                         {% if model.is_open %}
                         <img src="{{ url_for('static', filename='open.svg') }}" alt="Open">
