@@ -40,6 +40,7 @@ class Model(db.Model):
     is_active = db.Column(
         db.Boolean, default=True
     )  # Whether the model is active and can be voted on
+    model_url = db.Column(db.String(255), nullable=True)
 
     @property
     def win_rate(self):
@@ -269,36 +270,42 @@ def insert_initial_models():
             name="Eleven Multilingual v2",
             model_type=ModelType.TTS,
             is_open=False,
+            model_url="https://elevenlabs.io/",
         ),
         Model(
             id="playht-2.0",
             name="PlayHT 2.0",
             model_type=ModelType.TTS,
             is_open=False,
+            model_url="https://play.ht/",
         ),
         Model(
             id="playht-3.0-mini",
             name="PlayHT 3.0 Mini",
             model_type=ModelType.TTS,
             is_open=False,
+            model_url="https://play.ht/",
         ),
         Model(
             id="styletts2",
             name="StyleTTS 2",
             model_type=ModelType.TTS,
             is_open=True,
+            model_url="https://github.com/yl4579/StyleTTS2",
         ),
         Model(
             id="kokoro-v1",
             name="Kokoro v1.0",
             model_type=ModelType.TTS,
             is_open=True,
+            model_url="https://huggingface.co/hexgrad/Kokoro-82M",
         ),
         Model(
             id="cosyvoice-2.0",
             name="CosyVoice 2.0",
             model_type=ModelType.TTS,
             is_open=True,
+            model_url="https://github.com/FunAudioLLM/CosyVoice",
         ),
     ]
     conversational_models = []
