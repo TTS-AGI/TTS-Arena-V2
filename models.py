@@ -307,6 +307,13 @@ def insert_initial_models():
             is_open=True,
             model_url="https://github.com/FunAudioLLM/CosyVoice",
         ),
+        Model(
+            id="papla-p1",
+            name="Papla P1",
+            model_type=ModelType.TTS,
+            is_open=False,
+            model_url="https://papla.media/",
+        ),
     ]
     conversational_models = []
 

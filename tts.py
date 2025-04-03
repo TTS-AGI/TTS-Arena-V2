@@ -11,6 +11,7 @@ model_mapping = {
     "kokoro-v1": "kokorov1",
     "cosyvoice-2.0": "cosyvoice",
     "playht-3.0-mini": "playht3",
+    "papla-p1": "papla",
 }
 
 
