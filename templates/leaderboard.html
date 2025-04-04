@@ -333,6 +333,15 @@
 
     /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
+        .no-data {
+            color: var(--text-color);
+        }
+
+        .no-data h3 {
+            color: var(--text-color);
+        }
+        
+        
         .leaderboard-container {
             background-color: var(--light-gray);
             border-color: var(--border-color);
@@ -369,6 +378,10 @@
         }
         
         .segmented-control label {
+            color: var(--text-color);
+        }
+
+        .segmented-control label:hover {
             color: var(--text-color);
         }
         
@@ -489,7 +502,7 @@
 </div>
 
 <div id="conversational-tab" class="tab-content" style="display: none;">
-    <!-- <div class="view-toggle">
+    <div class="view-toggle">
         <div class="segmented-control">
             <input type="radio" id="conversational-public" name="conversational-view" checked>
             <label for="conversational-public">Public</label>
@@ -497,7 +510,7 @@
             <label for="conversational-personal">Personal</label>
             <div class="slider"></div>
         </div>
-    </div> -->
+    </div>
 
     <div id="conversational-public-leaderboard" class="leaderboard-view active">
         {% if conversational_leaderboard and conversational_leaderboard|length > 0 %}
@@ -533,8 +546,9 @@
         </div>
         {% else %}
         <div class="no-data">
-            <h3>Conversational leaderboard coming soon!</h3>
-            <p>We're working on adding conversational models to the arena. Stay tuned for updates!</p>
+            <h3>No data available yet</h3>
+            <p>Be the first to vote and help build the conversational leaderboard! Compare models in the arena to see how they stack up.</p>
+            <a href="{{ url_for('arena') }}#conversational" class="btn">Go to Arena</a>
         </div>
         {% endif %}
     </div>
@@ -575,7 +589,7 @@
         <div class="no-data">
             <h3>No personal data yet</h3>
             <p>You haven't voted on any conversational models yet. Visit the arena to compare models and build your personal leaderboard.</p>
-            <a href="{{ url_for('arena') }}" class="btn">Go to Arena</a>
+            <a href="{{ url_for('arena') }}#conversational" class="btn">Go to Arena</a>
         </div>
         {% endif %}
     </div>
@@ -590,9 +604,12 @@
     </div>
 </div>
 
+<!-- Pass auth status via data attribute -->
+<div id="auth-data" data-is-logged-in="{% if current_user.is_authenticated %}true{% else %}false{% endif %}"></div>
+
 <script>
     // Set auth status from server-side
-    var isLoggedIn = {% if current_user.is_authenticated %}true{% else %}false{% endif %};
+    var isLoggedIn = document.getElementById('auth-data').dataset.isLoggedIn === 'true';
 </script>
 
 <script>
@@ -601,16 +618,31 @@
         const ttsSlider = document.querySelector('#tts-tab .slider');
         const convSlider = document.querySelector('#conversational-tab .slider');
         
-        // Calculate initial widths for sliders based on label sizes
-        if (ttsSlider) {
-            const ttsPublicLabel = document.querySelector('label[for="tts-public"]');
-            ttsSlider.style.width = `${ttsPublicLabel.offsetWidth}px`;
+        // Function to position sliders based on selected radio
+        function positionSliders() {
+            // Position TTS slider
+            if (ttsSlider) {
+                const ttsSelectedRadio = document.querySelector('#tts-tab input[name="tts-view"]:checked');
+                if (ttsSelectedRadio) {
+                    const ttsSelectedLabel = document.querySelector(`label[for="${ttsSelectedRadio.id}"]`);
+                    ttsSlider.style.width = `${ttsSelectedLabel.offsetWidth}px`;
+                    ttsSlider.style.transform = `translateX(${ttsSelectedLabel.offsetLeft - 4}px)`;
+                }
+            }
+            
+            // Position Conversational slider
+            if (convSlider) {
+                const convSelectedRadio = document.querySelector('#conversational-tab input[name="conversational-view"]:checked');
+                if (convSelectedRadio) {
+                    const convSelectedLabel = document.querySelector(`label[for="${convSelectedRadio.id}"]`);
+                    convSlider.style.width = `${convSelectedLabel.offsetWidth}px`;
+                    convSlider.style.transform = `translateX(${convSelectedLabel.offsetLeft - 4}px)`;
+                }
+            }
         }
         
-        if (convSlider) {
-            const convPublicLabel = document.querySelector('label[for="conversational-public"]');
-            convSlider.style.width = `${convPublicLabel.offsetWidth}px`;
-        }
+        // Position sliders on load
+        positionSliders();
         
         // Tab switching
         const tabs = document.querySelectorAll('.tab');
@@ -626,6 +658,9 @@
                 
                 document.querySelector('.tab[data-tab="conversational"]').classList.add('active');
                 document.getElementById('conversational-tab').style.display = 'block';
+                
+                // Ensure sliders are positioned correctly
+                setTimeout(positionSliders, 50);
             } else if (hash === '#tts' || hash === '') {
                 // Switch to TTS tab (default)
                 tabs.forEach(t => t.classList.remove('active'));
@@ -633,6 +668,9 @@
                 
                 document.querySelector('.tab[data-tab="tts"]').classList.add('active');
                 document.getElementById('tts-tab').style.display = 'block';
+                
+                // Ensure sliders are positioned correctly
+                setTimeout(positionSliders, 50);
             }
         }
         
@@ -656,6 +694,9 @@
                 // Add active class to clicked tab and show corresponding content
                 this.classList.add('active');
                 document.getElementById(tabId + '-tab').style.display = 'block';
+                
+                // Position sliders after tab switch
+                setTimeout(positionSliders, 0);
             });
         });
         
@@ -677,20 +718,18 @@
                     return;
                 }
                 
-                // Move slider
-                const slider = this.parentElement.querySelector('.slider');
-                const label = document.querySelector(`label[for="${this.id}"]`);
-                
-                // Update slider position and size
-                slider.style.width = `${label.offsetWidth}px`;
-                slider.style.transform = `translateX(${label.offsetLeft - 4}px)`;
+                // Position the slider using our function
+                positionSliders();
                 
                 // Show corresponding leaderboard
                 const leaderboardViews = document.querySelectorAll(`#${tabId}-tab .leaderboard-view`);
                 leaderboardViews.forEach(v => {
                     v.style.display = 'none';
+                    v.classList.remove('active');
                 });
-                document.getElementById(`${tabId}-${view}-leaderboard`).style.display = 'block';
+                const activeView = document.getElementById(`${tabId}-${view}-leaderboard`);
+                activeView.style.display = 'block';
+                activeView.classList.add('active');
             });
         });
         
@@ -700,6 +739,14 @@
                 loginPrompt.style.display = 'none';
             });
         }
+        
+        // Final positioning after all DOM operations are complete
+        setTimeout(positionSliders, 100);
+        
+        // Reposition sliders on window resize
+        window.addEventListener('resize', function() {
+            positionSliders();
+        });
     });
 </script>
 {% endblock %} 

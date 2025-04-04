@@ -83,6 +83,8 @@ os.makedirs(TEMP_AUDIO_DIR, exist_ok=True)
 
 # Store active TTS sessions
 tts_sessions = {}
+# Store active conversational sessions
+conversational_sessions = {}
 
 # Register blueprints
 app.register_blueprint(auth, url_prefix="/auth")
@@ -304,17 +306,190 @@ def cleanup_session(session_id):
         del tts_sessions[session_id]
 
 
+@app.route("/api/conversational/generate", methods=["POST"])
+@limiter.limit("5 per minute")
+def generate_podcast():
+    data = request.json
+    script = data.get("script")
+    
+    if not script or not isinstance(script, list) or len(script) < 2:
+        return jsonify({"error": "Invalid script format or too short"}), 400
+    
+    # Validate script format
+    for line in script:
+        if not isinstance(line, dict) or 'text' not in line or 'speaker_id' not in line:
+            return jsonify({"error": "Invalid script line format. Each line must have text and speaker_id"}), 400
+        if not line['text'] or not isinstance(line['speaker_id'], int) or line['speaker_id'] not in [0, 1]:
+            return jsonify({"error": "Invalid script content. Speaker ID must be 0 or 1"}), 400
+    
+    # Get two conversational models (currently only CSM and PlayDialog)
+    available_models = Model.query.filter_by(
+        model_type=ModelType.CONVERSATIONAL, is_active=True
+    ).all()
+    
+    if len(available_models) < 2:
+        return jsonify({"error": "Not enough conversational models available"}), 500
+    
+    selected_models = random.sample(available_models, 2)
+    
+    try:
+        # Generate audio for both models
+        audio_files = []
+        model_ids = []
+        
+        for model in selected_models:
+            # Call conversational TTS service
+            audio_content = predict_tts(script, model.id)
+            
+            # Save to temp file with unique name
+            file_uuid = str(uuid.uuid4())
+            dest_path = os.path.join(TEMP_AUDIO_DIR, f"{file_uuid}.wav")
+            
+            with open(dest_path, 'wb') as f:
+                f.write(audio_content)
+            
+            audio_files.append(dest_path)
+            model_ids.append(model.id)
+        
+        # Create session
+        session_id = str(uuid.uuid4())
+        script_text = " ".join([line['text'] for line in script])
+        conversational_sessions[session_id] = {
+            "model_a": model_ids[0],
+            "model_b": model_ids[1],
+            "audio_a": audio_files[0],
+            "audio_b": audio_files[1],
+            "text": script_text[:1000],  # Limit text length
+            "created_at": datetime.utcnow(),
+            "expires_at": datetime.utcnow() + timedelta(minutes=30),
+            "voted": False,
+            "script": script,
+        }
+        
+        # Return audio file paths and session
+        return jsonify({
+            "session_id": session_id,
+            "audio_a": f"/api/conversational/audio/{session_id}/a",
+            "audio_b": f"/api/conversational/audio/{session_id}/b",
+            "expires_in": 1800,  # 30 minutes in seconds
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Conversational generation error: {str(e)}")
+        return jsonify({"error": f"Failed to generate podcast: {str(e)}"}), 500
+
+@app.route("/api/conversational/audio/<session_id>/<model_key>")
+def get_podcast_audio(session_id, model_key):
+    if session_id not in conversational_sessions:
+        return jsonify({"error": "Invalid or expired session"}), 404
+    
+    session = conversational_sessions[session_id]
+    
+    # Check if session expired
+    if datetime.utcnow() > session["expires_at"]:
+        cleanup_conversational_session(session_id)
+        return jsonify({"error": "Session expired"}), 410
+    
+    if model_key == "a":
+        audio_path = session["audio_a"]
+    elif model_key == "b":
+        audio_path = session["audio_b"]
+    else:
+        return jsonify({"error": "Invalid model key"}), 400
+    
+    # Check if file exists
+    if not os.path.exists(audio_path):
+        return jsonify({"error": "Audio file not found"}), 404
+    
+    return send_file(audio_path, mimetype="audio/wav")
+
+@app.route("/api/conversational/vote", methods=["POST"])
+@limiter.limit("30 per minute")
+def submit_podcast_vote():
+    data = request.json
+    session_id = data.get("session_id")
+    chosen_model = data.get("chosen_model")  # "a" or "b"
+    
+    if not session_id or session_id not in conversational_sessions:
+        return jsonify({"error": "Invalid or expired session"}), 404
+    
+    if not chosen_model or chosen_model not in ["a", "b"]:
+        return jsonify({"error": "Invalid chosen model"}), 400
+    
+    session = conversational_sessions[session_id]
+    
+    # Check if session expired
+    if datetime.utcnow() > session["expires_at"]:
+        cleanup_conversational_session(session_id)
+        return jsonify({"error": "Session expired"}), 410
+    
+    # Check if already voted
+    if session["voted"]:
+        return jsonify({"error": "Vote already submitted for this session"}), 400
+    
+    # Get model IDs
+    chosen_id = session["model_a"] if chosen_model == "a" else session["model_b"]
+    rejected_id = session["model_b"] if chosen_model == "a" else session["model_a"]
+    
+    # Record vote in database
+    user_id = current_user.id if current_user.is_authenticated else None
+    vote, error = record_vote(
+        user_id, session["text"], chosen_id, rejected_id, ModelType.CONVERSATIONAL
+    )
+    
+    if error:
+        return jsonify({"error": error}), 500
+    
+    # Mark session as voted
+    session["voted"] = True
+    
+    # Return updated models
+    return jsonify({
+        "success": True,
+        "chosen_model": {"id": chosen_id, "name": Model.query.get(chosen_id).name},
+        "rejected_model": {"id": rejected_id, "name": Model.query.get(rejected_id).name},
+        "names": {
+            "a": Model.query.get(session["model_a"]).name,
+            "b": Model.query.get(session["model_b"]).name,
+        },
+    })
+
+def cleanup_conversational_session(session_id):
+    """Remove conversational session and its audio files"""
+    if session_id in conversational_sessions:
+        session = conversational_sessions[session_id]
+        
+        # Remove audio files
+        for audio_file in [session["audio_a"], session["audio_b"]]:
+            if os.path.exists(audio_file):
+                try:
+                    os.remove(audio_file)
+                except Exception as e:
+                    app.logger.error(f"Error removing conversational audio file: {str(e)}")
+        
+        # Remove session
+        del conversational_sessions[session_id]
+
+
 # Schedule periodic cleanup
 def setup_cleanup():
     def cleanup_expired_sessions():
         current_time = datetime.utcnow()
-        expired_sessions = [
-            sid
-            for sid, session in tts_sessions.items()
+        # Cleanup TTS sessions
+        expired_tts_sessions = [
+            sid for sid, session in tts_sessions.items() 
             if current_time > session["expires_at"]
         ]
-        for sid in expired_sessions:
+        for sid in expired_tts_sessions:
             cleanup_session(sid)
+            
+        # Cleanup conversational sessions
+        expired_conv_sessions = [
+            sid for sid, session in conversational_sessions.items() 
+            if current_time > session["expires_at"]
+        ]
+        for sid in expired_conv_sessions:
+            cleanup_conversational_session(sid)
 
     # Run cleanup every 15 minutes
     from apscheduler.schedulers.background import BackgroundScheduler
@@ -384,4 +559,7 @@ if __name__ == "__main__":
     app.config["PREFERRED_URL_SCHEME"] = "https"
     from waitress import serve
 
-    serve(app, host="0.0.0.0", port=int(os.environ.get("PORT", 7860)))
+    if IS_SPACES:
+        serve(app, host="0.0.0.0", port=int(os.environ.get("PORT", 7860)))
+    else:
+        app.run(debug=True, ssl_context="adhoc")

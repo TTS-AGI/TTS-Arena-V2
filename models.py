@@ -324,7 +324,22 @@ def insert_initial_models():
             model_url="https://hume.ai/",
         ),
     ]
-    conversational_models = []
+    conversational_models = [
+        Model(
+            id="csm-1b",
+            name="CSM 1B",
+            model_type=ModelType.CONVERSATIONAL,
+            is_open=True,
+            model_url="https://huggingface.co/sesame/csm-1b",
+        ),
+        Model(
+            id="playdialog-1.0",
+            name="PlayDialog 1.0",
+            model_type=ModelType.CONVERSATIONAL,
+            is_open=False,
+            model_url="https://play.ht/",
+        ),
+    ]
 
     all_models = tts_models + conversational_models
 

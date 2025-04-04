@@ -95,14 +95,97 @@
 </div>
 
 <div id="conversational-tab" class="tab-content">
-    <div class="coming-soon-container">
-        <div class="coming-soon-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-            </svg>
+    <div class="podcast-container">
+        <div class="podcast-controls">
+            <button type="button" class="segmented-btn random-script-btn" title="Load random script">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-shuffle-icon lucide-shuffle">
+                    <path d="m18 14 4 4-4 4" />
+                    <path d="m18 2 4 4-4 4" />
+                    <path d="M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22" />
+                    <path d="M2 6h1.972a4 4 0 0 1 3.6 2.2" />
+                    <path d="M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45" />
+                </svg>
+                Random Script
+            </button>
+            <button type="button" class="podcast-synth-btn">Generate Podcast</button>
         </div>
-        <h2 class="coming-soon-title">Coming Soon</h2>
-        <p class="coming-soon-text">We're working on bringing conversational AI comparison to TTS Arena. Stay tuned for updates!</p>
+        
+        <div class="podcast-script-container">
+            <div class="podcast-lines">
+                <!-- Script lines will be added here -->
+            </div>
+            
+            <button type="button" class="add-line-btn">+ Add Line</button>
+            
+            <div class="keyboard-hint podcast-keyboard-hint">
+                Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> or <kbd>Alt</kbd>+<kbd>Enter</kbd> to add a new line
+            </div>
+        </div>
+        
+        <div class="podcast-loading-container" style="display: none;">
+            <div class="loader-wrapper">
+                <div class="loader-animation">
+                    <div class="sound-wave">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+                <div class="loader-text">Generating podcast...</div>
+                <div class="loader-subtext">This may take up to a minute</div>
+            </div>
+        </div>
+
+        <div class="podcast-player-container" style="display: none;">
+            <div class="players-row">
+                <div class="player">
+                    <div class="player-label">Model A <span class="model-name-display"></span></div>
+                    <div class="podcast-wave-player-a"></div>
+                    <button class="vote-btn" data-model="a" disabled>
+                        Vote for A
+                        <span class="shortcut-key">A</span>
+                        <span class="vote-loader" style="display: none;">
+                            <div class="vote-spinner"></div>
+                        </span>
+                    </button>
+                </div>
+        
+                <div class="player">
+                    <div class="player-label">Model B <span class="model-name-display"></span></div>
+                    <div class="podcast-wave-player-b"></div>
+                    <button class="vote-btn" data-model="b" disabled>
+                        Vote for B
+                        <span class="shortcut-key">B</span>
+                        <span class="vote-loader" style="display: none;">
+                            <div class="vote-spinner"></div>
+                        </span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="keyboard-hint">
+                Press <kbd>Space</kbd> to play/pause audio, <kbd>A</kbd> or <kbd>B</kbd> to vote after listening
+            </div>
+            
+            <div class="podcast-vote-results vote-results" style="display: none;">
+                <h3 class="results-heading">Vote Recorded!</h3>
+                <div class="results-content">
+                    <div class="chosen-model">
+                        <strong>You chose:</strong> <span class="chosen-model-name"></span>
+                    </div>
+                    <div class="rejected-model">
+                        <strong>Over:</strong> <span class="rejected-model-name"></span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="podcast-next-round-container next-round-container" style="display: none;">
+                <button class="podcast-next-round-btn next-round-btn">Next Round <span class="shortcut-key">N</span></button>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -576,6 +659,321 @@
             box-shadow: 0 1px 0 rgba(255,255,255,0.1);
         }
     }
+    
+    /* Podcast UI styles */
+    .podcast-container {
+        width: 100%;
+    }
+    
+    .podcast-controls {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 24px;
+    }
+    
+    .random-script-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 16px;
+        height: 40px;
+        background-color: white;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius);
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+    
+    .random-script-btn:hover {
+        background-color: var(--light-gray);
+    }
+    
+    .podcast-synth-btn {
+        padding: 0 24px;
+        height: 40px;
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: var(--radius);
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+    
+    .podcast-synth-btn:hover {
+        background-color: #4038c7;
+    }
+    
+    .podcast-script-container {
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius);
+        overflow: hidden;
+        margin-bottom: 24px;
+    }
+    
+    .podcast-lines {
+        max-height: 500px;
+        overflow-y: auto;
+    }
+    
+    .podcast-line {
+        display: flex;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .speaker-label {
+        width: 120px;
+        padding: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 500;
+        border-right: 1px solid var(--border-color);
+        background-color: var(--light-gray);
+        white-space: nowrap;
+    }
+    
+    .speaker-1 {
+        color: #3b82f6;
+    }
+    
+    .speaker-2 {
+        color: #ef4444;
+    }
+    
+    .line-input {
+        flex: 1;
+        padding: 12px;
+        border: none;
+        outline: none;
+        font-size: 1em;
+    }
+    
+    .line-input:focus {
+        background-color: rgba(80, 70, 229, 0.03);
+    }
+    
+    .remove-line-btn {
+        width: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: none;
+        border: none;
+        border-left: 1px solid var(--border-color);
+        cursor: pointer;
+        color: #888;
+        transition: color 0.2s, background-color 0.2s;
+    }
+    
+    .remove-line-btn:hover {
+        color: #ef4444;
+        background-color: rgba(239, 68, 68, 0.1);
+    }
+    
+    .add-line-btn {
+        width: 100%;
+        padding: 12px;
+        border: none;
+        background-color: var(--light-gray);
+        cursor: pointer;
+        font-weight: 500;
+        transition: background-color 0.2s;
+        margin-bottom: 0;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .add-line-btn:hover {
+        background-color: rgba(80, 70, 229, 0.1);
+    }
+    
+    .podcast-keyboard-hint {
+        padding: 10px;
+        text-align: center;
+        background-color: var(--light-gray);
+        border-top: 1px solid var(--border-color);
+        margin-top: 0;
+        font-size: 13px;
+    }
+    
+    .podcast-player {
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius);
+        padding: 20px;
+        margin-bottom: 24px;
+    }
+    
+    .podcast-wave-player {
+        margin: 20px 0;
+    }
+    
+    .podcast-transcript-container {
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid var(--border-color);
+    }
+    
+    .podcast-transcript {
+        margin-top: 12px;
+        line-height: 1.6;
+    }
+    
+    .transcript-line {
+        margin-bottom: 12px;
+    }
+    
+    .transcript-speaker {
+        font-weight: 600;
+        margin-right: 8px;
+    }
+    
+    .transcript-speaker.speaker-1 {
+        color: #3b82f6;
+    }
+    
+    .transcript-speaker.speaker-2 {
+        color: #ef4444;
+    }
+    
+    /* Responsive styles for podcast UI */
+    @media (max-width: 768px) {
+        .podcast-controls {
+            flex-direction: column;
+        }
+        
+        .random-script-btn,
+        .podcast-synth-btn {
+            width: 100%;
+            height: 48px;
+        }
+        
+        .podcast-line {
+            flex-direction: column;
+            padding-bottom: 0;
+            margin-bottom: 0;
+        }
+        
+        .speaker-label {
+            width: 100%;
+            border-right: none;
+            border-bottom: 1px solid var(--border-color);
+            padding: 8px 10px;
+            justify-content: flex-start;
+        }
+        
+        .line-input {
+            width: 100%;
+            padding: 8px 10px;
+        }
+        
+        .remove-line-btn {
+            position: absolute;
+            top: 6px;
+            right: 10px;
+            border-left: none;
+            background-color: rgba(255, 255, 255, 0.5);
+            border-radius: 4px;
+            width: 30px;
+            height: 30px;
+        }
+        
+        .podcast-line {
+            position: relative;
+        }
+        
+        /* Dark mode adjustments for mobile */
+        @media (prefers-color-scheme: dark) {
+            .remove-line-btn {
+                background-color: rgba(50, 50, 60, 0.7);
+            }
+        }
+    }
+    
+    /* Dark mode styles for podcast UI */
+    @media (prefers-color-scheme: dark) {
+        .random-script-btn {
+            background-color: var(--light-gray);
+            color: var(--text-color);
+            border-color: var(--border-color);
+        }
+
+        .add-line-btn {
+            background-color: var(--light-gray);
+            color: var(--text-color);
+            border-color: var(--border-color);
+        }
+        
+        .random-script-btn:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .line-input {
+            background-color: var(--light-gray);
+            color: var(--text-color);
+        }
+        
+        .line-input:focus {
+            background-color: rgba(108, 99, 255, 0.1);
+        }
+    }
+
+    .podcast-loading-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100vh;
+        background-color: rgba(255, 255, 255, 0.9);
+        z-index: 1000;
+    }
+    
+    @media (prefers-color-scheme: dark) {
+        .podcast-loading-container {
+            background-color: rgba(18, 18, 24, 0.9);
+        }
+    }
+
+    .podcast-vote-results {
+        background-color: #f0f4ff;
+        border: 1px solid #d0d7f7;
+        border-radius: var(--radius);
+        padding: 16px;
+        margin: 24px 0;
+    }
+    
+    .podcast-next-round-container {
+        margin-top: 24px;
+        text-align: center;
+    }
+    
+    .podcast-next-round-btn {
+        padding: 12px 24px;
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: var(--radius);
+        font-weight: 500;
+        cursor: pointer;
+        position: relative;
+        width: 100%;
+        font-size: 1rem;
+        transition: background-color 0.2s;
+    }
+    
+    .podcast-next-round-btn:hover {
+        background-color: #4038c7;
+    }
+    
+    /* Dark mode adjustments */
+    @media (prefers-color-scheme: dark) {
+        .podcast-vote-results {
+            background-color: var(--light-gray);
+            border-color: var(--border-color);
+        }
+    }
 </style>
 {% endblock %} 
 
@@ -908,6 +1306,10 @@
         
         // Add keyboard shortcut listeners
         document.addEventListener('keydown', function(e) {
+            // Check if TTS tab is active
+            const ttsTab = document.getElementById('tts-tab');
+            if (!ttsTab.classList.contains('active')) return;
+            
             // Only process keyboard shortcuts if text input is not focused
             if (document.activeElement === textInput) {
                 return;
@@ -959,6 +1361,413 @@
         
         // Add event listener for next round button
         nextRoundBtn.addEventListener('click', resetToInitialState);
+    });
+</script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Variables for podcast UI
+        const podcastContainer = document.querySelector('.podcast-container');
+        const podcastLinesContainer = document.querySelector('.podcast-lines');
+        const addLineBtn = document.querySelector('.add-line-btn');
+        const randomScriptBtn = document.querySelector('.random-script-btn');
+        const podcastSynthBtn = document.querySelector('.podcast-synth-btn');
+        const podcastLoadingContainer = document.querySelector('.podcast-loading-container');
+        const podcastPlayerContainer = document.querySelector('.podcast-player-container');
+        const podcastWavePlayerA = document.querySelector('.podcast-wave-player-a');
+        const podcastWavePlayerB = document.querySelector('.podcast-wave-player-b');
+        const podcastVoteButtons = podcastPlayerContainer.querySelectorAll('.vote-btn');
+        const podcastVoteResults = podcastPlayerContainer.querySelector('.vote-results');
+        const podcastNextRoundContainer = podcastPlayerContainer.querySelector('.next-round-container');
+        const podcastNextRoundBtn = podcastPlayerContainer.querySelector('.next-round-btn');
+        const chosenModelNameElement = podcastVoteResults.querySelector('.chosen-model-name');
+        const rejectedModelNameElement = podcastVoteResults.querySelector('.rejected-model-name');
+        
+        let podcastWavePlayers = { a: null, b: null };
+        let bothPodcastSamplesPlayed = false;
+        let currentPodcastSessionId = null;
+        let podcastModelNames = { a: 'Model A', b: 'Model B' };
+        
+        // Sample random scripts for the podcast
+        const randomScripts = [
+            [
+                { speaker: 1, text: "Welcome to our podcast about artificial intelligence. Today we're discussing the latest advances in text-to-speech technology." },
+                { speaker: 2, text: "That's right! Text-to-speech has come a long way in recent years. The voices sound increasingly natural." },
+                { speaker: 1, text: "What do you think are the most impressive recent developments?" },
+                { speaker: 2, text: "I'd say the emotion and inflection that modern TTS systems can convey is truly remarkable." }
+            ],
+            [
+                { speaker: 1, text: "So today we're talking about climate change and its effects on our planet." },
+                { speaker: 2, text: "It's such an important topic. We're seeing more extreme weather events every year." },
+                { speaker: 1, text: "Absolutely. And the science is clear that human activity is the primary driver." },
+                { speaker: 2, text: "What can individuals do to help address this global challenge?" }
+            ],
+            [
+                { speaker: 1, text: "In today's episode, we're exploring the world of modern cinema." },
+                { speaker: 2, text: "Film has evolved so much since its early days. What's your favorite era of movies?" },
+                { speaker: 1, text: "I'm particularly fond of the 1970s New Hollywood movement. Films like The Godfather and Taxi Driver really pushed boundaries." },
+                { speaker: 2, text: "Interesting choice! I'm more drawn to contemporary international cinema, especially from directors like Bong Joon-ho and Park Chan-wook." }
+            ]
+        ];
+        
+        // Initialize with 2 empty lines
+        function initializePodcastLines() {
+            podcastLinesContainer.innerHTML = '';
+            addPodcastLine(1);
+            addPodcastLine(2);
+        }
+        
+        // Add a new podcast line
+        function addPodcastLine(speakerNum = null) {
+            const lineCount = podcastLinesContainer.querySelectorAll('.podcast-line').length;
+            
+            // If speaker number isn't specified, alternate between 1 and 2
+            if (speakerNum === null) {
+                speakerNum = (lineCount % 2) + 1;
+            }
+            
+            const lineElement = document.createElement('div');
+            lineElement.className = 'podcast-line';
+            
+            lineElement.innerHTML = `
+                <div class="speaker-label speaker-${speakerNum}">Speaker ${speakerNum}</div>
+                <input type="text" class="line-input" placeholder="Enter dialog...">
+                <button type="button" class="remove-line-btn" tabindex="-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" 
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            `;
+            
+            podcastLinesContainer.appendChild(lineElement);
+            
+            // Add event listener to remove button
+            const removeBtn = lineElement.querySelector('.remove-line-btn');
+            removeBtn.addEventListener('click', function() {
+                // Don't allow removing if there are only 2 lines
+                if (podcastLinesContainer.querySelectorAll('.podcast-line').length > 2) {
+                    lineElement.remove();
+                } else {
+                    openToast("At least 2 lines are required", "warning");
+                }
+            });
+            
+            // Add event listener for keyboard navigation in the input field
+            const inputField = lineElement.querySelector('.line-input');
+            inputField.addEventListener('keydown', function(e) {
+                // Alt+Enter or Ctrl+Enter to add new line
+                if (e.key === 'Enter' && (e.altKey || e.ctrlKey)) {
+                    e.preventDefault();
+                    addPodcastLine();
+                    
+                    // Focus the new line's input field
+                    setTimeout(() => {
+                        const inputs = podcastLinesContainer.querySelectorAll('.line-input');
+                        inputs[inputs.length - 1].focus();
+                    }, 10);
+                }
+            });
+            
+            return lineElement;
+        }
+        
+        // Load a random script
+        function loadRandomScript() {
+            // Clear existing lines
+            podcastLinesContainer.innerHTML = '';
+            
+            // Select a random script
+            const randomScript = randomScripts[Math.floor(Math.random() * randomScripts.length)];
+            
+            // Add each line from the script
+            randomScript.forEach(line => {
+                const lineElement = addPodcastLine(line.speaker);
+                lineElement.querySelector('.line-input').value = line.text;
+            });
+        }
+        
+        // Generate podcast (mock functionality)
+        function generatePodcast() {
+            // Get all lines
+            const lines = [];
+            podcastLinesContainer.querySelectorAll('.podcast-line').forEach(line => {
+                const speaker_id = line.querySelector('.speaker-label').textContent.includes('1') ? 0 : 1;
+                const text = line.querySelector('.line-input').value.trim();
+                
+                if (text) {
+                    lines.push({ speaker_id, text });
+                }
+            });
+            
+            // Validate that we have at least 2 lines with content
+            if (lines.length < 2) {
+                openToast("Please enter at least 2 lines of dialog", "warning");
+                return;
+            }
+            
+            // Reset vote buttons and hide results
+            podcastVoteButtons.forEach(btn => {
+                btn.disabled = true;
+                btn.classList.remove('selected');
+                btn.querySelector('.vote-loader').style.display = 'none';
+            });
+            
+            podcastVoteResults.style.display = 'none';
+            podcastNextRoundContainer.style.display = 'none';
+            
+            // Reset the flag for both samples played
+            bothPodcastSamplesPlayed = false;
+            
+            // Show loading animation
+            podcastLoadingContainer.style.display = 'flex';
+            podcastPlayerContainer.style.display = 'none';
+            
+            // Call API to generate podcast
+            fetch('/api/conversational/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ script: lines }),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => {
+                        throw new Error(err.error || 'Failed to generate podcast');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                currentPodcastSessionId = data.session_id;
+                
+                // Hide loading
+                podcastLoadingContainer.style.display = 'none';
+                
+                // Show player
+                podcastPlayerContainer.style.display = 'block';
+                
+                // Initialize WavePlayers if not already done
+                if (!podcastWavePlayers.a) {
+                    podcastWavePlayers.a = new WavePlayer(podcastWavePlayerA);
+                    podcastWavePlayers.b = new WavePlayer(podcastWavePlayerB);
+                    
+                    // Load audio in waveplayers
+                    podcastWavePlayers.a.loadAudio(data.audio_a);
+                    podcastWavePlayers.b.loadAudio(data.audio_b);
+                } else {
+                    // Reset and reload for existing players
+                    podcastWavePlayers.a.wavesurfer.empty();
+                    podcastWavePlayers.b.wavesurfer.empty();
+                    
+                    podcastWavePlayers.a.loadAudio(data.audio_a);
+                    podcastWavePlayers.b.loadAudio(data.audio_b);
+                }
+                
+                // Setup automatic sequential playback
+                podcastWavePlayers.a.wavesurfer.once('ready', function() {
+                    podcastWavePlayers.a.play();
+                    
+                    // When audio A ends, play audio B
+                    podcastWavePlayers.a.wavesurfer.once('finish', function() {
+                        // Wait a short moment before playing B
+                        setTimeout(() => {
+                            podcastWavePlayers.b.play();
+                            
+                            // When audio B ends, enable voting
+                            podcastWavePlayers.b.wavesurfer.once('finish', function() {
+                                bothPodcastSamplesPlayed = true;
+                                podcastVoteButtons.forEach(btn => {
+                                    btn.disabled = false;
+                                });
+                            });
+                        }, 500);
+                    });
+                });
+            })
+            .catch(error => {
+                podcastLoadingContainer.style.display = 'none';
+                openToast(error.message, "error");
+                console.error('Error:', error);
+            });
+        }
+        
+        // Handle vote for a podcast model
+        function handlePodcastVote(model) {
+            // Disable both vote buttons
+            podcastVoteButtons.forEach(btn => {
+                btn.disabled = true;
+                if (btn.dataset.model === model) {
+                    btn.querySelector('.vote-loader').style.display = 'flex';
+                }
+            });
+            
+            // Send vote to server
+            fetch('/api/conversational/vote', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    session_id: currentPodcastSessionId,
+                    chosen_model: model
+                }),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => {
+                        throw new Error(err.error || 'Failed to submit vote');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Hide loaders
+                podcastVoteButtons.forEach(btn => {
+                    btn.querySelector('.vote-loader').style.display = 'none';
+                    
+                    // Highlight the selected button
+                    if (btn.dataset.model === model) {
+                        btn.classList.add('selected');
+                    }
+                });
+                
+                // Store model names from vote response
+                podcastModelNames.a = data.names.a;
+                podcastModelNames.b = data.names.b;
+                
+                // Show model names after voting
+                const modelNameDisplays = podcastPlayerContainer.querySelectorAll('.model-name-display');
+                modelNameDisplays[0].textContent = data.names.a ? `(${data.names.a})` : '';
+                modelNameDisplays[1].textContent = data.names.b ? `(${data.names.b})` : '';
+                
+                // Show vote results
+                chosenModelNameElement.textContent = data.chosen_model.name;
+                rejectedModelNameElement.textContent = data.rejected_model.name;
+                podcastVoteResults.style.display = 'block';
+                
+                // Show next round button
+                podcastNextRoundContainer.style.display = 'block';
+                
+                // Show success toast
+                openToast("Vote recorded successfully!", "success");
+            })
+            .catch(error => {
+                // Re-enable vote buttons
+                podcastVoteButtons.forEach(btn => {
+                    btn.disabled = false;
+                    btn.querySelector('.vote-loader').style.display = 'none';
+                });
+                
+                openToast(error.message, "error");
+                console.error('Error:', error);
+            });
+        }
+        
+        // Reset podcast UI to initial state
+        function resetPodcastState() {
+            // Hide players, results, and next round button
+            podcastPlayerContainer.style.display = 'none';
+            podcastVoteResults.style.display = 'none';
+            podcastNextRoundContainer.style.display = 'none';
+            
+            // Reset vote buttons
+            podcastVoteButtons.forEach(btn => {
+                btn.disabled = true;
+                btn.classList.remove('selected');
+                btn.querySelector('.vote-loader').style.display = 'none';
+            });
+            
+            // Stop any playing audio
+            if (podcastWavePlayers.a) podcastWavePlayers.a.stop();
+            if (podcastWavePlayers.b) podcastWavePlayers.b.stop();
+            
+            // Reset session
+            currentPodcastSessionId = null;
+            
+            // Reset the flag for both samples played
+            bothPodcastSamplesPlayed = false;
+        }
+        
+        // Add keyboard shortcut listeners for podcast voting
+        document.addEventListener('keydown', function(e) {
+            // Check if we're in the podcast tab and it's active
+            const podcastTab = document.getElementById('conversational-tab');
+            if (!podcastTab.classList.contains('active')) return;
+            
+            // Only process if input fields are not focused
+            if (document.activeElement.tagName === 'INPUT' || 
+                document.activeElement.tagName === 'TEXTAREA') {
+                return;
+            }
+            
+            if (e.key.toLowerCase() === 'a') {
+                if (bothPodcastSamplesPlayed && !podcastVoteButtons[0].disabled) {
+                    handlePodcastVote('a');
+                } else if (podcastPlayerContainer.style.display !== 'none' && !bothPodcastSamplesPlayed) {
+                    openToast("Please listen to both audio samples before voting", "info");
+                }
+            } else if (e.key.toLowerCase() === 'b') {
+                if (bothPodcastSamplesPlayed && !podcastVoteButtons[1].disabled) {
+                    handlePodcastVote('b');
+                } else if (podcastPlayerContainer.style.display !== 'none' && !bothPodcastSamplesPlayed) {
+                    openToast("Please listen to both audio samples before voting", "info");
+                }
+            } else if (e.key.toLowerCase() === 'n') {
+                if (podcastNextRoundContainer.style.display === 'block') {
+                    if (!e.ctrlKey && !e.metaKey) {
+                        e.preventDefault();
+                    }
+                    resetPodcastState();
+                }
+            } else if (e.key === ' ') {
+                // Space to play/pause current audio
+                if (podcastPlayerContainer.style.display !== 'none') {
+                    e.preventDefault();
+                    // If A is playing, toggle A, else if B is playing, toggle B, else play A
+                    if (podcastWavePlayers.a && podcastWavePlayers.a.isPlaying) {
+                        podcastWavePlayers.a.togglePlayPause();
+                    } else if (podcastWavePlayers.b && podcastWavePlayers.b.isPlaying) {
+                        podcastWavePlayers.b.togglePlayPause();
+                    } else if (podcastWavePlayers.a) {
+                        podcastWavePlayers.a.play();
+                    }
+                }
+            }
+        });
+        
+        // Event listeners
+        addLineBtn.addEventListener('click', function() {
+            addPodcastLine();
+        });
+        
+        randomScriptBtn.addEventListener('click', function() {
+            loadRandomScript();
+        });
+        
+        podcastSynthBtn.addEventListener('click', function() {
+            generatePodcast();
+        });
+        
+        // Add event listeners to vote buttons
+        podcastVoteButtons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                if (bothPodcastSamplesPlayed) {
+                    const model = this.dataset.model;
+                    handlePodcastVote(model);
+                } else {
+                    openToast("Please listen to both audio samples before voting", "info");
+                }
+            });
+        });
+        
+        // Add event listener for next round button
+        podcastNextRoundBtn.addEventListener('click', resetPodcastState);
+        
+        // Initialize with 2 empty lines
+        initializePodcastLines();
     });
 </script>
 {% endblock %}

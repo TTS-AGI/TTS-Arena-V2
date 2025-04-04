@@ -501,6 +501,20 @@
             background-color: var(--error-color);
         }
 
+        /* Custom focus styles for better accessibility */
+        a:focus-visible,
+        button:focus-visible,
+        .btn:focus-visible,
+        .vote-btn:focus-visible,
+        .icon-btn:focus-visible,
+        .nav-item:focus-visible {
+            outline: 2px solid var(--primary-color);
+            outline-offset: 2px;
+            box-shadow: 0 0 0 2px rgba(80, 70, 229, 0.3);
+            border-radius: var(--radius);
+            text-decoration: none;
+        }
+
         @keyframes slideIn {
             from {
                 transform: translateX(100%);
