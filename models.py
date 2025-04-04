@@ -195,6 +195,7 @@ def get_leaderboard_data(model_type):
                 "rank": rank,
                 "id": model.id,
                 "name": model.name,
+                "model_url": model.model_url,
                 "win_rate": f"{model.win_rate:.0f}%",
                 "total_votes": model.match_count,
                 "elo": int(model.current_elo),
@@ -245,6 +246,7 @@ def get_user_leaderboard(user_id, model_type):
                 {
                     "id": model.id,
                     "name": model.name,
+                    "model_url": model.model_url,
                     "win_rate": f"{win_rate:.0f}%",
                     "total_votes": stats["matches"],
                     "wins": stats["wins"],
