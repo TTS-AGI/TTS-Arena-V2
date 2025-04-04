@@ -12,6 +12,7 @@ model_mapping = {
     "cosyvoice-2.0": "cosyvoice",
     "playht-3.0-mini": "playht3",
     "papla-p1": "papla",
+    "hume-octave": "hume",
 }
 
 

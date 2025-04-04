@@ -314,6 +314,13 @@ def insert_initial_models():
             is_open=False,
             model_url="https://papla.media/",
         ),
+        Model(
+            id="hume-octave",
+            name="Hume Octave",
+            model_type=ModelType.TTS,
+            is_open=False,
+            model_url="https://hume.ai/",
+        ),
     ]
     conversational_models = []
 
