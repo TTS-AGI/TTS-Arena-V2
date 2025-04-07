@@ -769,11 +769,56 @@
             ::-webkit-scrollbar-corner {
                 background: var(--secondary-color);
             }
+
+            /* Dark mode loading overlay */
+            .loading-overlay {
+                background-color: rgba(18, 18, 24, 0.8);
+            }
+        }
+
+        /* Loading Overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        
+        .loading-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .loader-spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(80, 70, 229, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--primary-color);
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
     </style>
 </head>
 
 <body>
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="loader-spinner"></div>
+    </div>
+    
     <div class="mobile-header">
         <div class="hamburger-menu" onclick="toggleSidebar()">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -893,6 +938,24 @@
             userAuth.classList.toggle('active');
             userDropdown.classList.toggle('active');
         }
+
+        // Loading overlay functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            // Hide the loading overlay when page has loaded
+            const loadingOverlay = document.getElementById('loading-overlay');
+            loadingOverlay.classList.remove('active');
+            
+            // Show loading overlay when sidebar links are clicked
+            const sidebarLinks = document.querySelectorAll('.sidebar .nav-item');
+            sidebarLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    // Don't show overlay if it's the current active page
+                    if (!this.classList.contains('active')) {
+                        loadingOverlay.classList.add('active');
+                    }
+                });
+            });
+        });
 
         // Close dropdown when clicking outside
         document.addEventListener('click', function(event) {
