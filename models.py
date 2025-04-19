@@ -264,6 +264,124 @@ def get_user_leaderboard(user_id, model_type):
     return result
 
 
+def get_historical_leaderboard_data(model_type, target_date=None):
+    """
+    Get leaderboard data at a specific date in history.
+    
+    Args:
+        model_type (str): The model type ('tts' or 'conversational')
+        target_date (datetime): The target date for historical data, defaults to current time
+
+    Returns:
+        list: List of dictionaries containing model data for the historical leaderboard
+    """
+    if not target_date:
+        target_date = datetime.utcnow()
+    
+    # Get all models of the specified type
+    models = Model.query.filter_by(model_type=model_type).all()
+    
+    # Create a result list for the models
+    result = []
+    
+    for model in models:
+        # Get the most recent EloHistory entry for each model before the target date
+        elo_entry = EloHistory.query.filter(
+            EloHistory.model_id == model.id,
+            EloHistory.model_type == model_type,
+            EloHistory.timestamp <= target_date
+        ).order_by(EloHistory.timestamp.desc()).first()
+        
+        # Skip models that have no history before the target date
+        if not elo_entry:
+            continue
+        
+        # Count wins and matches up to the target date
+        match_count = Vote.query.filter(
+            db.or_(
+                Vote.model_chosen == model.id,
+                Vote.model_rejected == model.id
+            ),
+            Vote.model_type == model_type,
+            Vote.vote_date <= target_date
+        ).count()
+        
+        win_count = Vote.query.filter(
+            Vote.model_chosen == model.id,
+            Vote.model_type == model_type,
+            Vote.vote_date <= target_date
+        ).count()
+        
+        # Calculate win rate
+        win_rate = (win_count / match_count * 100) if match_count > 0 else 0
+        
+        # Add to result
+        result.append({
+            "id": model.id,
+            "name": model.name,
+            "model_url": model.model_url,
+            "win_rate": f"{win_rate:.0f}%",
+            "total_votes": match_count,
+            "elo": int(elo_entry.elo_score),
+            "is_open": model.is_open,
+        })
+    
+    # Sort by ELO score descending
+    result.sort(key=lambda x: x["elo"], reverse=True)
+    
+    # Add rank and tier
+    for i, item in enumerate(result, 1):
+        item["rank"] = i
+        # Determine tier based on rank
+        if i <= 2:
+            item["tier"] = "tier-s"
+        elif i <= 4:
+            item["tier"] = "tier-a"
+        elif i <= 7:
+            item["tier"] = "tier-b"
+        else:
+            item["tier"] = ""
+    
+    return result
+
+
+def get_key_historical_dates(model_type):
+    """
+    Get a list of key dates in the leaderboard history.
+    
+    Args:
+        model_type (str): The model type ('tts' or 'conversational')
+        
+    Returns:
+        list: List of datetime objects representing key dates
+    """
+    # Get first and most recent vote dates
+    first_vote = Vote.query.filter_by(model_type=model_type).order_by(Vote.vote_date.asc()).first()
+    last_vote = Vote.query.filter_by(model_type=model_type).order_by(Vote.vote_date.desc()).first()
+    
+    if not first_vote or not last_vote:
+        return []
+    
+    # Generate a list of key dates - first day of each month between the first and last vote
+    dates = []
+    current_date = first_vote.vote_date.replace(day=1)
+    end_date = last_vote.vote_date
+    
+    while current_date <= end_date:
+        dates.append(current_date)
+        # Move to next month
+        if current_date.month == 12:
+            current_date = current_date.replace(year=current_date.year + 1, month=1)
+        else:
+            current_date = current_date.replace(month=current_date.month + 1)
+    
+    # Add latest date
+    if dates and dates[-1].month != end_date.month or dates[-1].year != end_date.year:
+        dates.append(end_date)
+    
+    return dates
+
+
 def insert_initial_models():
     """Insert initial models into the database."""
     tts_models = [

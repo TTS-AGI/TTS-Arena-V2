@@ -284,6 +284,143 @@
         font-weight: 500;
     }
 
+    /* Timeline styles */
+    .timeline-container {
+        margin-bottom: 24px;
+        position: relative;
+    }
+    
+    .timeline-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+    
+    .timeline-title {
+        font-weight: 600;
+        color: var(--text-color);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .timeline-title svg {
+        opacity: 0.7;
+    }
+    
+    .timeline-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .timeline-select {
+        padding: 8px 12px;
+        border-radius: 4px;
+        border: 1px solid var(--border-color);
+        background-color: white;
+        color: var(--text-color);
+        font-size: 14px;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 8px center;
+        background-size: 16px;
+        padding-right: 36px;
+        cursor: pointer;
+    }
+    
+    .timeline-button {
+        padding: 8px 12px;
+        border-radius: 4px;
+        border: 1px solid var(--border-color);
+        background-color: white;
+        color: var(--text-color);
+        font-size: 14px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    
+    .timeline-button:hover {
+        background-color: var(--light-gray);
+    }
+    
+    .timeline-track {
+        height: 8px;
+        background-color: var(--light-gray);
+        border-radius: 4px;
+        position: relative;
+        margin: 20px 0;
+    }
+    
+    .timeline-progress {
+        position: absolute;
+        height: 100%;
+        background-color: var(--primary-color);
+        border-radius: 4px;
+        transition: width 0.3s ease;
+    }
+    
+    .timeline-marker {
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        background-color: white;
+        border: 3px solid var(--primary-color);
+        border-radius: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        cursor: pointer;
+        z-index: 2;
+        transition: left 0.3s ease;
+    }
+    
+    .timeline-dates {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 8px;
+        color: #666;
+        font-size: 12px;
+    }
+    
+    .historical-indicator {
+        display: none;
+        background-color: var(--primary-color);
+        color: white;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+        margin-bottom: 16px;
+        align-items: center;
+        gap: 6px;
+    }
+    
+    .historical-indicator.active {
+        display: inline-flex;
+    }
+    
+    .loading-spinner {
+        display: none;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        animation: spin 1s linear infinite;
+    }
+    
+    .loading.loading-spinner {
+        display: inline-block;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
     @media (max-width: 768px) {
         .leaderboard-header, .leaderboard-row {
             grid-template-columns: 60px 1fr 80px 80px;
@@ -301,6 +438,20 @@
         .filter-controls {
             flex-direction: column;
             align-items: flex-start;
+        }
+        
+        .timeline-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        
+        .timeline-controls {
+            width: 100%;
+        }
+        
+        .timeline-select {
+            flex-grow: 1;
         }
     }
 
@@ -397,6 +548,24 @@
         .license-icon img {
             filter: invert(1);
         }
+        
+        .timeline-select, .timeline-button {
+            background-color: var(--light-gray);
+            border-color: var(--border-color);
+            color: var(--text-color);
+        }
+        
+        .timeline-button:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .timeline-track {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .timeline-marker {
+            background-color: var(--light-gray);
+        }
     }
 </style>
 {% endblock %}
@@ -414,8 +583,63 @@
             <label for="tts-public">Public</label>
             <input type="radio" id="tts-personal" name="tts-view">
             <label for="tts-personal">Personal</label>
+            <input type="radio" id="tts-historical" name="tts-view">
+            <label for="tts-historical">Historical</label>
             <div class="slider"></div>
         </div>
+    </div>
+
+    <!-- Historical timeline for TTS models -->
+    <div id="tts-timeline-container" class="timeline-container" style="display: none;">
+        <div class="timeline-header">
+            <div class="timeline-title">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                Leaderboard History
+            </div>
+            
+            <div class="timeline-controls">
+                <select id="tts-date-select" class="timeline-select">
+                    {% if formatted_tts_dates %}
+                        {% for date in formatted_tts_dates %}
+                            <option value="{{ tts_key_dates[loop.index0].strftime('%Y-%m-%d') }}">{{ date }}</option>
+                        {% endfor %}
+                    {% else %}
+                        <option value="">No historical data</option>
+                    {% endif %}
+                </select>
+                
+                <button id="tts-load-historical" class="timeline-button">
+                    <span>Load</span>
+                    <span id="tts-loading-spinner" class="loading-spinner"></span>
+                </button>
+            </div>
+        </div>
+        
+        {% if tts_key_dates and tts_key_dates|length > 1 %}
+        <div class="timeline-track">
+            <div id="tts-timeline-progress" class="timeline-progress" style="width: 0%"></div>
+            <div id="tts-timeline-marker" class="timeline-marker" style="left: 0%"></div>
+        </div>
+        <div class="timeline-dates">
+            <div>{{ tts_key_dates[0].strftime('%b %Y') }}</div>
+            <div>{{ tts_key_dates[-1].strftime('%b %Y') }}</div>
+        </div>
+        {% else %}
+        <div class="no-data">
+            <p>Not enough historical data available to show timeline.</p>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="historical-indicator" id="tts-historical-indicator">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+        <span id="tts-historical-date">Historical view</span>
     </div>
 
     <div id="tts-public-leaderboard" class="leaderboard-view active">
@@ -499,6 +723,25 @@
         </div>
         {% endif %}
     </div>
+    
+    <div id="tts-historical-leaderboard" class="leaderboard-view" style="display: none;">
+        <!-- This will be populated dynamically with JavaScript -->
+        <div class="leaderboard-container">
+            <div class="leaderboard-header">
+                <div>Rank</div>
+                <div>Model</div>
+                <div style="text-align: right">Win Rate</div>
+                <div style="text-align: right" class="total-votes-header">Total Votes</div>
+                <div style="text-align: right">ELO</div>
+            </div>
+            <div id="tts-historical-rows">
+                <!-- Historical rows will be inserted here -->
+                <div class="no-data">
+                    <p>Select a date and click "Load" to view historical data.</p>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div id="conversational-tab" class="tab-content" style="display: none;">
@@ -508,8 +751,63 @@
             <label for="conversational-public">Public</label>
             <input type="radio" id="conversational-personal" name="conversational-view">
             <label for="conversational-personal">Personal</label>
+            <input type="radio" id="conversational-historical" name="conversational-view">
+            <label for="conversational-historical">Historical</label>
             <div class="slider"></div>
         </div>
+    </div>
+
+    <!-- Historical timeline for Conversational models -->
+    <div id="conversational-timeline-container" class="timeline-container" style="display: none;">
+        <div class="timeline-header">
+            <div class="timeline-title">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                Leaderboard History
+            </div>
+            
+            <div class="timeline-controls">
+                <select id="conversational-date-select" class="timeline-select">
+                    {% if formatted_conversational_dates %}
+                        {% for date in formatted_conversational_dates %}
+                            <option value="{{ conversational_key_dates[loop.index0].strftime('%Y-%m-%d') }}">{{ date }}</option>
+                        {% endfor %}
+                    {% else %}
+                        <option value="">No historical data</option>
+                    {% endif %}
+                </select>
+                
+                <button id="conversational-load-historical" class="timeline-button">
+                    <span>Load</span>
+                    <span id="conversational-loading-spinner" class="loading-spinner"></span>
+                </button>
+            </div>
+        </div>
+        
+        {% if conversational_key_dates and conversational_key_dates|length > 1 %}
+        <div class="timeline-track">
+            <div id="conversational-timeline-progress" class="timeline-progress" style="width: 0%"></div>
+            <div id="conversational-timeline-marker" class="timeline-marker" style="left: 0%"></div>
+        </div>
+        <div class="timeline-dates">
+            <div>{{ conversational_key_dates[0].strftime('%b %Y') }}</div>
+            <div>{{ conversational_key_dates[-1].strftime('%b %Y') }}</div>
+        </div>
+        {% else %}
+        <div class="no-data">
+            <p>Not enough historical data available to show timeline.</p>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="historical-indicator" id="conversational-historical-indicator">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+        <span id="conversational-historical-date">Historical view</span>
     </div>
 
     <div id="conversational-public-leaderboard" class="leaderboard-view active">
@@ -592,6 +890,25 @@
             <a href="{{ url_for('arena') }}#conversational" class="btn">Go to Arena</a>
         </div>
         {% endif %}
+    </div>
+    
+    <div id="conversational-historical-leaderboard" class="leaderboard-view" style="display: none;">
+        <!-- This will be populated dynamically with JavaScript -->
+        <div class="leaderboard-container">
+            <div class="leaderboard-header">
+                <div>Rank</div>
+                <div>Model</div>
+                <div style="text-align: right">Win Rate</div>
+                <div style="text-align: right" class="total-votes-header">Total Votes</div>
+                <div style="text-align: right">ELO</div>
+            </div>
+            <div id="conversational-historical-rows">
+                <!-- Historical rows will be inserted here -->
+                <div class="no-data">
+                    <p>Select a date and click "Load" to view historical data.</p>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -707,7 +1024,7 @@
         
         viewToggles.forEach(toggle => {
             toggle.addEventListener('change', function() {
-                const view = this.id.split('-')[1]; // 'public' or 'personal'
+                const view = this.id.split('-')[1]; // 'public', 'personal', or 'historical'
                 const tabId = this.closest('.tab-content').id.split('-')[0]; // 'tts' or 'conversational'
                 
                 if (view === 'personal' && !isLoggedIn) {
@@ -730,6 +1047,12 @@
                 const activeView = document.getElementById(`${tabId}-${view}-leaderboard`);
                 activeView.style.display = 'block';
                 activeView.classList.add('active');
+                
+                // Toggle timeline visibility
+                const timelineContainer = document.getElementById(`${tabId}-timeline-container`);
+                if (timelineContainer) {
+                    timelineContainer.style.display = view === 'historical' ? 'block' : 'none';
+                }
             });
         });
         
@@ -739,6 +1062,118 @@
                 loginPrompt.style.display = 'none';
             });
         }
+        
+        // Historical data functionality
+        function setupHistoricalView(modelType) {
+            const loadButton = document.getElementById(`${modelType}-load-historical`);
+            const dateSelect = document.getElementById(`${modelType}-date-select`);
+            const historicalRows = document.getElementById(`${modelType}-historical-rows`);
+            const loadingSpinner = document.getElementById(`${modelType}-loading-spinner`);
+            const historicalIndicator = document.getElementById(`${modelType}-historical-indicator`);
+            const historicalDate = document.getElementById(`${modelType}-historical-date`);
+            const timelineMarker = document.getElementById(`${modelType}-timeline-marker`);
+            const timelineProgress = document.getElementById(`${modelType}-timeline-progress`);
+            
+            if (!loadButton || !dateSelect || !historicalRows) return;
+            
+            loadButton.addEventListener('click', function() {
+                const selectedDate = dateSelect.value;
+                if (!selectedDate) return;
+                
+                // Show loading state
+                loadingSpinner.classList.add('loading');
+                
+                // Fetch historical data
+                fetch(`/api/historical-leaderboard/${modelType}?date=${selectedDate}`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        // Update historical indicator
+                        historicalIndicator.classList.add('active');
+                        historicalDate.textContent = data.date;
+                        
+                        // Clear existing rows
+                        historicalRows.innerHTML = '';
+                        
+                        if (data.leaderboard && data.leaderboard.length > 0) {
+                            // Add new rows
+                            data.leaderboard.forEach(model => {
+                                const row = document.createElement('div');
+                                row.className = `leaderboard-row ${model.tier || ''}`;
+                                
+                                row.innerHTML = `
+                                    <div class="rank">#${model.rank}</div>
+                                    <div class="model-name">
+                                        ${model.model_url ? 
+                                            `<a href="${model.model_url}" target="_blank" class="model-name-link">${model.name}</a>` : 
+                                            model.name
+                                        }
+                                        <div class="license-icon">
+                                            <img src="${model.is_open ? '/static/open.svg' : '/static/closed.svg'}" alt="${model.is_open ? 'Open' : 'Proprietary'}">
+                                            <span class="tooltip">${model.is_open ? 'Open model' : 'Proprietary model'}</span>
+                                        </div>
+                                    </div>
+                                    <div class="win-rate">${model.win_rate}</div>
+                                    <div class="total-votes">${model.total_votes}</div>
+                                    <div class="elo-score">${model.elo}</div>
+                                `;
+                                
+                                historicalRows.appendChild(row);
+                            });
+                        } else {
+                            // Show no data message
+                            historicalRows.innerHTML = `
+                                <div class="no-data">
+                                    <p>No data available for this date.</p>
+                                </div>
+                            `;
+                        }
+                        
+                        // Update timeline marker position based on selected date
+                        updateTimelinePosition(modelType, selectedDate);
+                    })
+                    .catch(error => {
+                        console.error('Error fetching historical data:', error);
+                        historicalRows.innerHTML = `
+                            <div class="no-data">
+                                <p>Error loading data. Please try again.</p>
+                            </div>
+                        `;
+                    })
+                    .finally(() => {
+                        // Hide loading state
+                        loadingSpinner.classList.remove('loading');
+                    });
+            });
+            
+            // Update the timeline marker position
+            function updateTimelinePosition(modelType, selectedDate) {
+                const timeline = document.querySelector(`#${modelType}-timeline-container .timeline-track`);
+                if (!timeline || !timelineMarker || !timelineProgress) return;
+                
+                // Get all the dates
+                const options = Array.from(dateSelect.options);
+                const dateValues = options.map(option => option.value);
+                const selectedIndex = dateValues.indexOf(selectedDate);
+                
+                if (selectedIndex >= 0 && dateValues.length > 1) {
+                    // Calculate percentage position (0 to 100)
+                    const position = (selectedIndex / (dateValues.length - 1)) * 100;
+                    
+                    // Update marker and progress
+                    timelineMarker.style.left = `${position}%`;
+                    timelineProgress.style.width = `${position}%`;
+                }
+            }
+        }
+        
+        // Setup historical view for both model types
+        setupHistoricalView('tts');
+        setupHistoricalView('conversational');
         
         // Final positioning after all DOM operations are complete
         setTimeout(positionSliders, 100);

@@ -256,6 +256,14 @@ def leaderboard():
         conversational_personal_leaderboard = get_user_leaderboard(
             current_user.id, ModelType.CONVERSATIONAL
         )
+    
+    # Get key dates for the timeline
+    tts_key_dates = get_key_historical_dates(ModelType.TTS)
+    conversational_key_dates = get_key_historical_dates(ModelType.CONVERSATIONAL)
+    
+    # Format dates for display in the dropdown
+    formatted_tts_dates = [date.strftime("%B %Y") for date in tts_key_dates]
+    formatted_conversational_dates = [date.strftime("%B %Y") for date in conversational_key_dates]
 
     return render_template(
         "leaderboard.html",
@@ -263,7 +271,37 @@ def leaderboard():
         conversational_leaderboard=conversational_leaderboard,
         tts_personal_leaderboard=tts_personal_leaderboard,
         conversational_personal_leaderboard=conversational_personal_leaderboard,
+        tts_key_dates=tts_key_dates,
+        conversational_key_dates=conversational_key_dates,
+        formatted_tts_dates=formatted_tts_dates,
+        formatted_conversational_dates=formatted_conversational_dates,
     )
+
+
+@app.route("/api/historical-leaderboard/<model_type>")
+def historical_leaderboard(model_type):
+    """Get historical leaderboard data for a specific date"""
+    if model_type not in [ModelType.TTS, ModelType.CONVERSATIONAL]:
+        return jsonify({"error": "Invalid model type"}), 400
+    
+    # Get date from query parameter
+    date_str = request.args.get("date")
+    if not date_str:
+        return jsonify({"error": "Date parameter is required"}), 400
+    
+    try:
+        # Parse date from URL parameter (format: YYYY-MM-DD)
+        target_date = datetime.strptime(date_str, "%Y-%m-%d")
+        
+        # Get historical leaderboard data
+        leaderboard_data = get_historical_leaderboard_data(model_type, target_date)
+        
+        return jsonify({
+            "date": target_date.strftime("%B %d, %Y"),
+            "leaderboard": leaderboard_data
+        })
+    except ValueError:
+        return jsonify({"error": "Invalid date format. Use YYYY-MM-DD"}), 400
 
 
 @app.route("/about")
