@@ -60,6 +60,10 @@ app.config["SESSION_COOKIE_SAMESITE"] = (
 )  # HF Spaces uses iframes to load the app, so we need to set SAMESITE to None
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)  # Set to desired duration
 
+# Force HTTPS when running in HuggingFace Spaces
+if IS_SPACES:
+    app.config["PREFERRED_URL_SCHEME"] = "https"
+
 # Cloudflare Turnstile settings
 app.config["TURNSTILE_ENABLED"] = os.getenv("TURNSTILE_ENABLED", "False").lower() == "true"
 app.config["TURNSTILE_SITE_KEY"] = os.getenv("TURNSTILE_SITE_KEY", "")
