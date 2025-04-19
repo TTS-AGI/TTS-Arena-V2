@@ -5,7 +5,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 # Check if running in a Huggin Face Space
 IS_SPACES = False
 if os.getenv("SPACE_REPO_NAME"):
-    print("Running in a Hugging Face Space")
+    print("Running in a Hugging Face Space 🤗")
     IS_SPACES = True
 
     # Setup database sync for HF Spaces
@@ -20,9 +20,9 @@ if os.getenv("SPACE_REPO_NAME"):
                 local_dir="instance",
                 token=os.getenv("HF_TOKEN"),
             )
-            print("Database downloaded successfully")
+            print("Database downloaded successfully ✅")
         except Exception as e:
-            print(f"Error downloading database from HF dataset: {str(e)}")
+            print(f"Error downloading database from HF dataset: {str(e)} ⚠️")
 
 from flask import Flask, render_template, g, request, jsonify, send_file, redirect, url_for, session, abort
 from flask_login import LoginManager, current_user
@@ -156,6 +156,10 @@ def verify_turnstile():
     redirect_url = request.form.get('redirect_url', url_for('arena'))
     
     if not token:
+        # If AJAX request, return JSON error
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({"success": False, "error": "Missing verification token"}), 400
+        # Otherwise redirect back to turnstile page
         return redirect(url_for('turnstile_page', redirect_url=redirect_url))
     
     # Verify token with Cloudflare
@@ -165,18 +169,44 @@ def verify_turnstile():
         'remoteip': request.remote_addr
     }
     
-    response = requests.post(app.config["TURNSTILE_VERIFY_URL"], data=data)
-    result = response.json()
+    try:
+        response = requests.post(app.config["TURNSTILE_VERIFY_URL"], data=data)
+        result = response.json()
+        
+        if result.get('success'):
+            # Set verification status in session
+            session['turnstile_verified'] = True
+            session['turnstile_verified_at'] = datetime.utcnow().timestamp()
+            
+            # Determine response type based on request
+            is_xhr = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+            accepts_json = 'application/json' in request.headers.get('Accept', '')
+            
+            # If AJAX or JSON request, return success JSON
+            if is_xhr or accepts_json:
+                return jsonify({"success": True, "redirect": redirect_url})
+            
+            # For regular form submissions, redirect to the target URL
+            return redirect(redirect_url)
+        else:
+            # Verification failed
+            app.logger.warning(f"Turnstile verification failed: {result}")
+            
+            # If AJAX request, return JSON error
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({"success": False, "error": "Verification failed"}), 403
+                
+            # Otherwise redirect back to turnstile page
+            return redirect(url_for('turnstile_page', redirect_url=redirect_url))
     
-    if result.get('success'):
-        # Set verification status in session
-        session['turnstile_verified'] = True
-        session['turnstile_verified_at'] = datetime.utcnow().timestamp()
-        # Redirect to the original URL
-        return redirect(redirect_url)
-    else:
-        # Verification failed
-        app.logger.warning(f"Turnstile verification failed: {result}")
+    except Exception as e:
+        app.logger.error(f"Turnstile verification error: {str(e)}")
+        
+        # If AJAX request, return JSON error
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({"success": False, "error": "Server error during verification"}), 500
+            
+        # Otherwise redirect back to turnstile page
         return redirect(url_for('turnstile_page', redirect_url=redirect_url))
 
 

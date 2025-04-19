@@ -91,6 +91,38 @@
             cursor: not-allowed;
         }
 
+        .loader {
+            display: none;
+            width: 24px;
+            height: 24px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .btn.loading .btn-text {
+            display: none;
+        }
+
+        .btn.loading .loader {
+            display: inline-block;
+        }
+
+        .status-message {
+            margin-top: 16px;
+            font-size: 14px;
+            color: #666;
+            display: none;
+        }
+
         /* Dark mode styles */
         @media (prefers-color-scheme: dark) {
             :root {
@@ -114,6 +146,10 @@
             p {
                 color: #aaa;
             }
+
+            .status-message {
+                color: #aaa;
+            }
         }
     </style>
 </head>
@@ -123,27 +159,94 @@
         <h1>Verification Required</h1>
         <p>Please complete the verification below to access TTS Arena.</p>
         
-        <form action="{{ url_for('verify_turnstile') }}" method="post">
+        <div id="turnstile-form">
             <div class="turnstile-container">
                 <div id="cf-turnstile" class="cf-turnstile"></div>
             </div>
-            <input type="hidden" name="cf-turnstile-response" id="cf-turnstile-response">
-            <input type="hidden" name="redirect_url" value="{{ redirect_url }}">
-            <button type="submit" class="btn" id="submit-btn" disabled>Continue to TTS Arena</button>
-        </form>
+            <button type="button" class="btn" id="submit-btn" disabled onclick="submitVerification()">
+                <span class="btn-text">Continue to TTS Arena</span>
+                <span class="loader"></span>
+            </button>
+            <div id="status-message" class="status-message"></div>
+        </div>
     </div>
 
     <script>
+        // Store the token and redirect URL
+        let turnstileToken = '';
+        const redirectUrl = '{{ redirect_url }}';
+        const verifyEndpoint = '{{ url_for("verify_turnstile") }}';
+        const statusMessage = document.getElementById('status-message');
+        const submitButton = document.getElementById('submit-btn');
+
         // Function to enable the button when verification is successful
         function onTurnstileSuccess(token) {
-            document.getElementById('submit-btn').disabled = false;
-            document.getElementById('cf-turnstile-response').value = token;
+            turnstileToken = token;
+            submitButton.disabled = false;
             console.log("Turnstile verification successful");
         }
 
         // Function to handle verification errors
         function onTurnstileError(error) {
             console.error("Turnstile error:", error);
+            statusMessage.textContent = "Verification error. Please try again.";
+            statusMessage.style.display = "block";
+        }
+
+        // Function to submit the verification via AJAX to handle iframe issues
+        function submitVerification() {
+            if (!turnstileToken) {
+                statusMessage.textContent = "Please complete the verification first.";
+                statusMessage.style.display = "block";
+                return;
+            }
+
+            // Show loading state
+            submitButton.classList.add('loading');
+            submitButton.disabled = true;
+            
+            // Create form data
+            const formData = new FormData();
+            formData.append('cf-turnstile-response', turnstileToken);
+            formData.append('redirect_url', redirectUrl);
+            
+            // Send verification request
+            fetch(verifyEndpoint, {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin', // Important for cookies
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => {
+                if (response.redirected) {
+                    // Handle redirect from the response
+                    window.location.href = response.url;
+                } else {
+                    return response.json().then(data => {
+                        if (data.success) {
+                            // If we got a JSON success response, redirect
+                            window.location.href = redirectUrl;
+                        } else {
+                            throw new Error("Verification failed");
+                        }
+                    });
+                }
+            })
+            .catch(error => {
+                console.error("Verification error:", error);
+                statusMessage.textContent = "Verification failed. Please try again.";
+                statusMessage.style.display = "block";
+                submitButton.classList.remove('loading');
+                submitButton.disabled = false;
+                
+                // Reset Turnstile if something goes wrong
+                if (typeof turnstile !== 'undefined') {
+                    turnstile.reset('#cf-turnstile');
+                }
+            });
         }
 
         // Initialize Turnstile when the page is loaded
