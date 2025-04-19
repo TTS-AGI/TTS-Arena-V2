@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
     <style>
         :root {
             --primary-color: #5046e5;
@@ -125,7 +125,7 @@
         
         <form action="{{ url_for('verify_turnstile') }}" method="post">
             <div class="turnstile-container">
-                <div class="cf-turnstile" data-sitekey="{{ turnstile_site_key }}"></div>
+                <div id="cf-turnstile" class="cf-turnstile"></div>
             </div>
             <input type="hidden" name="redirect_url" value="{{ redirect_url }}">
             <button type="submit" class="btn" id="submit-btn" disabled>Continue to TTS Arena</button>
@@ -135,13 +135,27 @@
     <script>
         // Enable button when Turnstile is completed
         window.addEventListener('load', function() {
-            turnstileCallback = function(token) {
+            // Define the callback function to enable the button
+            window.turnstileCallback = function(token) {
                 document.getElementById('submit-btn').disabled = false;
             }
             
-            if (typeof turnstile !== 'undefined') {
-                turnstile.render('.cf-turnstile', {
-                    callback: turnstileCallback
+            // Wait for the turnstile API to be ready
+            if (typeof turnstile === 'undefined') {
+                const checkTurnstile = setInterval(function() {
+                    if (typeof turnstile !== 'undefined') {
+                        clearInterval(checkTurnstile);
+                        renderTurnstile();
+                    }
+                }, 100);
+            } else {
+                renderTurnstile();
+            }
+            
+            function renderTurnstile() {
+                turnstile.render('#cf-turnstile', {
+                    sitekey: '{{ turnstile_site_key }}',
+                    callback: 'turnstileCallback'
                 });
             }
         });
