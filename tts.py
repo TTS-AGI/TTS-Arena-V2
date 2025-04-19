@@ -12,7 +12,12 @@ from pyht.client import TTSOptions
 
 load_dotenv()
 
-client = Client("TTS-AGI/tts-router", hf_token=os.getenv("HF_TOKEN"))
+try:
+    client = Client("TTS-AGI/tts-router", hf_token=os.getenv("HF_TOKEN"))
+except Exception as e:
+    print(f"Error initializing client: {e}")
+    client = None
+
 model_mapping = {
     "eleven-multilingual-v2": "eleven",
     "playht-2.0": "playht",
