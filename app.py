@@ -176,6 +176,7 @@ def verify_turnstile():
         return redirect(redirect_url)
     else:
         # Verification failed
+        app.logger.warning(f"Turnstile verification failed: {result}")
         return redirect(url_for('turnstile_page', redirect_url=redirect_url))
 
 

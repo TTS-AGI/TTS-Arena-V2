@@ -127,37 +127,43 @@
             <div class="turnstile-container">
                 <div id="cf-turnstile" class="cf-turnstile"></div>
             </div>
+            <input type="hidden" name="cf-turnstile-response" id="cf-turnstile-response">
             <input type="hidden" name="redirect_url" value="{{ redirect_url }}">
             <button type="submit" class="btn" id="submit-btn" disabled>Continue to TTS Arena</button>
         </form>
     </div>
 
     <script>
-        // Enable button when Turnstile is completed
-        window.addEventListener('load', function() {
-            // Define the callback function to enable the button
-            window.turnstileCallback = function(token) {
-                document.getElementById('submit-btn').disabled = false;
+        // Function to enable the button when verification is successful
+        function onTurnstileSuccess(token) {
+            document.getElementById('submit-btn').disabled = false;
+            document.getElementById('cf-turnstile-response').value = token;
+            console.log("Turnstile verification successful");
+        }
+
+        // Function to handle verification errors
+        function onTurnstileError(error) {
+            console.error("Turnstile error:", error);
+        }
+
+        // Initialize Turnstile when the page is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check for Turnstile script readiness
+            function waitForTurnstile() {
+                if (typeof turnstile !== 'undefined') {
+                    // Render the Turnstile widget
+                    turnstile.render('#cf-turnstile', {
+                        sitekey: '{{ turnstile_site_key }}',
+                        callback: onTurnstileSuccess,
+                        'error-callback': onTurnstileError
+                    });
+                } else {
+                    // If not ready yet, wait and try again
+                    setTimeout(waitForTurnstile, 100);
+                }
             }
             
-            // Wait for the turnstile API to be ready
-            if (typeof turnstile === 'undefined') {
-                const checkTurnstile = setInterval(function() {
-                    if (typeof turnstile !== 'undefined') {
-                        clearInterval(checkTurnstile);
-                        renderTurnstile();
-                    }
-                }, 100);
-            } else {
-                renderTurnstile();
-            }
-            
-            function renderTurnstile() {
-                turnstile.render('#cf-turnstile', {
-                    sitekey: '{{ turnstile_site_key }}',
-                    callback: 'turnstileCallback'
-                });
-            }
+            waitForTurnstile();
         });
     </script>
 </body>
