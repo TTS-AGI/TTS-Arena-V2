@@ -962,6 +962,31 @@
                     }
                 });
             });
+            
+            // Override fetch to handle Turnstile verification errors
+            const originalFetch = window.fetch;
+            window.fetch = async function(url, options) {
+                try {
+                    const response = await originalFetch(url, options);
+                    
+                    // If we get a 403 error with a specific error message, handle verification
+                    if (response.status === 403) {
+                        const data = await response.clone().json();
+                        if (data && (data.error === "Turnstile verification required" || data.error === "Turnstile verification expired")) {
+                            // Redirect to Turnstile verification page with the current URL as the redirect target
+                            window.location.href = "/turnstile?redirect_url=" + encodeURIComponent(window.location.href);
+                            return new Response(JSON.stringify({ redirecting: true }), { 
+                                status: 200,
+                                headers: { 'Content-Type': 'application/json' }
+                            });
+                        }
+                    }
+                    
+                    return response;
+                } catch (error) {
+                    return Promise.reject(error);
+                }
+            };
         });
 
         // Close dropdown when clicking outside

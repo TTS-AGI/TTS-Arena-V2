@@ -24,7 +24,7 @@ if os.getenv("SPACE_REPO_NAME"):
         except Exception as e:
             print(f"Error downloading database from HF dataset: {str(e)}")
 
-from flask import Flask, render_template, g, request, jsonify, send_file
+from flask import Flask, render_template, g, request, jsonify, send_file, redirect, url_for, session, abort
 from flask_login import LoginManager, current_user
 from models import *
 from auth import auth, init_oauth
@@ -40,6 +40,8 @@ import random
 import json
 from datetime import datetime, timedelta
 from flask_migrate import Migrate
+import requests
+import functools
 
 
 # Load environment variables
@@ -57,6 +59,12 @@ app.config["SESSION_COOKIE_SAMESITE"] = (
     "None" if IS_SPACES else "Lax"
 )  # HF Spaces uses iframes to load the app, so we need to set SAMESITE to None
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)  # Set to desired duration
+
+# Cloudflare Turnstile settings
+app.config["TURNSTILE_ENABLED"] = os.getenv("TURNSTILE_ENABLED", "False").lower() == "true"
+app.config["TURNSTILE_SITE_KEY"] = os.getenv("TURNSTILE_SITE_KEY", "")
+app.config["TURNSTILE_SECRET_KEY"] = os.getenv("TURNSTILE_SECRET_KEY", "")
+app.config["TURNSTILE_VERIFY_URL"] = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
 
 migrate = Migrate(app, db)
 
@@ -98,6 +106,77 @@ def load_user(user_id):
 @app.before_request
 def before_request():
     g.user = current_user
+    
+    # Check if Turnstile verification is required
+    if app.config["TURNSTILE_ENABLED"]:
+        # Exclude verification routes
+        excluded_routes = ['verify_turnstile', 'turnstile_page', 'static']
+        if request.endpoint not in excluded_routes:
+            # Check if user is verified
+            if not session.get('turnstile_verified'):
+                # Save original URL for redirect after verification
+                redirect_url = request.url
+                # If it's an API request, return a JSON response
+                if request.path.startswith('/api/'):
+                    return jsonify({'error': 'Turnstile verification required'}), 403
+                # For regular requests, redirect to verification page
+                return redirect(url_for('turnstile_page', redirect_url=redirect_url))
+            else:
+                # Check if verification has expired (default: 24 hours)
+                verification_timeout = int(os.getenv('TURNSTILE_TIMEOUT_HOURS', '24')) * 3600  # Convert hours to seconds
+                verified_at = session.get('turnstile_verified_at', 0)
+                current_time = datetime.utcnow().timestamp()
+                
+                if current_time - verified_at > verification_timeout:
+                    # Verification expired, clear status and redirect to verification page
+                    session.pop('turnstile_verified', None)
+                    session.pop('turnstile_verified_at', None)
+                    
+                    redirect_url = request.url
+                    if request.path.startswith('/api/'):
+                        return jsonify({'error': 'Turnstile verification expired'}), 403
+                    return redirect(url_for('turnstile_page', redirect_url=redirect_url))
+
+
+@app.route('/turnstile', methods=['GET'])
+def turnstile_page():
+    """Display Cloudflare Turnstile verification page"""
+    redirect_url = request.args.get('redirect_url', url_for('arena'))
+    return render_template(
+        'turnstile.html', 
+        turnstile_site_key=app.config["TURNSTILE_SITE_KEY"],
+        redirect_url=redirect_url
+    )
+
+
+@app.route('/verify-turnstile', methods=['POST'])
+def verify_turnstile():
+    """Verify Cloudflare Turnstile token"""
+    token = request.form.get('cf-turnstile-response')
+    redirect_url = request.form.get('redirect_url', url_for('arena'))
+    
+    if not token:
+        return redirect(url_for('turnstile_page', redirect_url=redirect_url))
+    
+    # Verify token with Cloudflare
+    data = {
+        'secret': app.config["TURNSTILE_SECRET_KEY"],
+        'response': token,
+        'remoteip': request.remote_addr
+    }
+    
+    response = requests.post(app.config["TURNSTILE_VERIFY_URL"], data=data)
+    result = response.json()
+    
+    if result.get('success'):
+        # Set verification status in session
+        session['turnstile_verified'] = True
+        session['turnstile_verified_at'] = datetime.utcnow().timestamp()
+        # Redirect to the original URL
+        return redirect(redirect_url)
+    else:
+        # Verification failed
+        return redirect(url_for('turnstile_page', redirect_url=redirect_url))
 
 
 @app.route("/")
@@ -138,6 +217,10 @@ def about():
 @app.route("/api/tts/generate", methods=["POST"])
 @limiter.limit("10 per minute")
 def generate_tts():
+    # If verification not setup, handle it first
+    if app.config["TURNSTILE_ENABLED"] and not session.get('turnstile_verified'):
+        return jsonify({"error": "Turnstile verification required"}), 403
+
     data = request.json
     text = data.get("text")
 
@@ -200,20 +283,24 @@ def generate_tts():
 
 @app.route("/api/tts/audio/<session_id>/<model_key>")
 def get_audio(session_id, model_key):
+    # If verification not setup, handle it first
+    if app.config["TURNSTILE_ENABLED"] and not session.get('turnstile_verified'):
+        return jsonify({"error": "Turnstile verification required"}), 403
+
     if session_id not in tts_sessions:
         return jsonify({"error": "Invalid or expired session"}), 404
 
-    session = tts_sessions[session_id]
+    session_data = tts_sessions[session_id]
 
     # Check if session expired
-    if datetime.utcnow() > session["expires_at"]:
+    if datetime.utcnow() > session_data["expires_at"]:
         cleanup_session(session_id)
         return jsonify({"error": "Session expired"}), 410
 
     if model_key == "a":
-        audio_path = session["audio_a"]
+        audio_path = session_data["audio_a"]
     elif model_key == "b":
-        audio_path = session["audio_b"]
+        audio_path = session_data["audio_b"]
     else:
         return jsonify({"error": "Invalid model key"}), 400
 
@@ -227,6 +314,10 @@ def get_audio(session_id, model_key):
 @app.route("/api/tts/vote", methods=["POST"])
 @limiter.limit("30 per minute")
 def submit_vote():
+    # If verification not setup, handle it first
+    if app.config["TURNSTILE_ENABLED"] and not session.get('turnstile_verified'):
+        return jsonify({"error": "Turnstile verification required"}), 403
+        
     data = request.json
     session_id = data.get("session_id")
     chosen_model = data.get("chosen_model")  # "a" or "b"
@@ -237,32 +328,32 @@ def submit_vote():
     if not chosen_model or chosen_model not in ["a", "b"]:
         return jsonify({"error": "Invalid chosen model"}), 400
 
-    session = tts_sessions[session_id]
+    session_data = tts_sessions[session_id]
 
     # Check if session expired
-    if datetime.utcnow() > session["expires_at"]:
+    if datetime.utcnow() > session_data["expires_at"]:
         cleanup_session(session_id)
         return jsonify({"error": "Session expired"}), 410
 
     # Check if already voted
-    if session["voted"]:
+    if session_data["voted"]:
         return jsonify({"error": "Vote already submitted for this session"}), 400
 
     # Get model IDs
-    chosen_id = session["model_a"] if chosen_model == "a" else session["model_b"]
-    rejected_id = session["model_b"] if chosen_model == "a" else session["model_a"]
+    chosen_id = session_data["model_a"] if chosen_model == "a" else session_data["model_b"]
+    rejected_id = session_data["model_b"] if chosen_model == "a" else session_data["model_a"]
 
     # Record vote in database
     user_id = current_user.id if current_user.is_authenticated else None
     vote, error = record_vote(
-        user_id, session["text"], chosen_id, rejected_id, ModelType.TTS
+        user_id, session_data["text"], chosen_id, rejected_id, ModelType.TTS
     )
 
     if error:
         return jsonify({"error": error}), 500
 
     # Mark session as voted
-    session["voted"] = True
+    session_data["voted"] = True
 
     # Return updated models
     return jsonify(
@@ -309,6 +400,10 @@ def cleanup_session(session_id):
 @app.route("/api/conversational/generate", methods=["POST"])
 @limiter.limit("5 per minute")
 def generate_podcast():
+    # If verification not setup, handle it first
+    if app.config["TURNSTILE_ENABLED"] and not session.get('turnstile_verified'):
+        return jsonify({"error": "Turnstile verification required"}), 403
+        
     data = request.json
     script = data.get("script")
     
@@ -380,20 +475,24 @@ def generate_podcast():
 
 @app.route("/api/conversational/audio/<session_id>/<model_key>")
 def get_podcast_audio(session_id, model_key):
+    # If verification not setup, handle it first
+    if app.config["TURNSTILE_ENABLED"] and not session.get('turnstile_verified'):
+        return jsonify({"error": "Turnstile verification required"}), 403
+        
     if session_id not in conversational_sessions:
         return jsonify({"error": "Invalid or expired session"}), 404
     
-    session = conversational_sessions[session_id]
+    session_data = conversational_sessions[session_id]
     
     # Check if session expired
-    if datetime.utcnow() > session["expires_at"]:
+    if datetime.utcnow() > session_data["expires_at"]:
         cleanup_conversational_session(session_id)
         return jsonify({"error": "Session expired"}), 410
     
     if model_key == "a":
-        audio_path = session["audio_a"]
+        audio_path = session_data["audio_a"]
     elif model_key == "b":
-        audio_path = session["audio_b"]
+        audio_path = session_data["audio_b"]
     else:
         return jsonify({"error": "Invalid model key"}), 400
     
@@ -406,6 +505,10 @@ def get_podcast_audio(session_id, model_key):
 @app.route("/api/conversational/vote", methods=["POST"])
 @limiter.limit("30 per minute")
 def submit_podcast_vote():
+    # If verification not setup, handle it first
+    if app.config["TURNSTILE_ENABLED"] and not session.get('turnstile_verified'):
+        return jsonify({"error": "Turnstile verification required"}), 403
+        
     data = request.json
     session_id = data.get("session_id")
     chosen_model = data.get("chosen_model")  # "a" or "b"
@@ -416,32 +519,32 @@ def submit_podcast_vote():
     if not chosen_model or chosen_model not in ["a", "b"]:
         return jsonify({"error": "Invalid chosen model"}), 400
     
-    session = conversational_sessions[session_id]
+    session_data = conversational_sessions[session_id]
     
     # Check if session expired
-    if datetime.utcnow() > session["expires_at"]:
+    if datetime.utcnow() > session_data["expires_at"]:
         cleanup_conversational_session(session_id)
         return jsonify({"error": "Session expired"}), 410
     
     # Check if already voted
-    if session["voted"]:
+    if session_data["voted"]:
         return jsonify({"error": "Vote already submitted for this session"}), 400
     
     # Get model IDs
-    chosen_id = session["model_a"] if chosen_model == "a" else session["model_b"]
-    rejected_id = session["model_b"] if chosen_model == "a" else session["model_a"]
+    chosen_id = session_data["model_a"] if chosen_model == "a" else session_data["model_b"]
+    rejected_id = session_data["model_b"] if chosen_model == "a" else session_data["model_a"]
     
     # Record vote in database
     user_id = current_user.id if current_user.is_authenticated else None
     vote, error = record_vote(
-        user_id, session["text"], chosen_id, rejected_id, ModelType.CONVERSATIONAL
+        user_id, session_data["text"], chosen_id, rejected_id, ModelType.CONVERSATIONAL
     )
     
     if error:
         return jsonify({"error": error}), 500
     
     # Mark session as voted
-    session["voted"] = True
+    session_data["voted"] = True
     
     # Return updated models
     return jsonify({
@@ -449,8 +552,8 @@ def submit_podcast_vote():
         "chosen_model": {"id": chosen_id, "name": Model.query.get(chosen_id).name},
         "rejected_model": {"id": rejected_id, "name": Model.query.get(rejected_id).name},
         "names": {
-            "a": Model.query.get(session["model_a"]).name,
-            "b": Model.query.get(session["model_b"]).name,
+            "a": Model.query.get(session_data["model_a"]).name,
+            "b": Model.query.get(session_data["model_b"]).name,
         },
     })
 
