@@ -175,7 +175,11 @@ def turnstile_page():
 def verify_turnstile():
     """Verify Cloudflare Turnstile token"""
     token = request.form.get('cf-turnstile-response')
-    redirect_url = request.form.get('redirect_url', url_for('arena'))
+    redirect_url = request.form.get('redirect_url', url_for('arena', _external=True))
+    
+    # Force HTTPS in HuggingFace Spaces
+    if IS_SPACES and redirect_url.startswith('http://'):
+        redirect_url = redirect_url.replace('http://', 'https://', 1)
     
     if not token:
         # If AJAX request, return JSON error
