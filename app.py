@@ -111,6 +111,11 @@ def load_user(user_id):
 def before_request():
     g.user = current_user
     
+    # Ensure HTTPS for HuggingFace Spaces environment
+    if IS_SPACES and request.headers.get('X-Forwarded-Proto') == 'http':
+        url = request.url.replace('http://', 'https://', 1)
+        return redirect(url, code=301)
+    
     # Check if Turnstile verification is required
     if app.config["TURNSTILE_ENABLED"]:
         # Exclude verification routes
@@ -120,6 +125,10 @@ def before_request():
             if not session.get('turnstile_verified'):
                 # Save original URL for redirect after verification
                 redirect_url = request.url
+                # Force HTTPS in HuggingFace Spaces
+                if IS_SPACES and redirect_url.startswith('http://'):
+                    redirect_url = redirect_url.replace('http://', 'https://', 1)
+                
                 # If it's an API request, return a JSON response
                 if request.path.startswith('/api/'):
                     return jsonify({'error': 'Turnstile verification required'}), 403
@@ -137,6 +146,10 @@ def before_request():
                     session.pop('turnstile_verified_at', None)
                     
                     redirect_url = request.url
+                    # Force HTTPS in HuggingFace Spaces
+                    if IS_SPACES and redirect_url.startswith('http://'):
+                        redirect_url = redirect_url.replace('http://', 'https://', 1)
+                    
                     if request.path.startswith('/api/'):
                         return jsonify({'error': 'Turnstile verification expired'}), 403
                     return redirect(url_for('turnstile_page', redirect_url=redirect_url))
@@ -145,7 +158,12 @@ def before_request():
 @app.route('/turnstile', methods=['GET'])
 def turnstile_page():
     """Display Cloudflare Turnstile verification page"""
-    redirect_url = request.args.get('redirect_url', url_for('arena'))
+    redirect_url = request.args.get('redirect_url', url_for('arena', _external=True))
+    
+    # Force HTTPS in HuggingFace Spaces
+    if IS_SPACES and redirect_url.startswith('http://'):
+        redirect_url = redirect_url.replace('http://', 'https://', 1)
+    
     return render_template(
         'turnstile.html', 
         turnstile_site_key=app.config["TURNSTILE_SITE_KEY"],
