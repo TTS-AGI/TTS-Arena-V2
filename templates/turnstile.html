@@ -175,6 +175,8 @@
         // Store the token and redirect URL
         let turnstileToken = '';
         const redirectUrl = '{{ redirect_url }}';
+        // Make sure the redirect URL uses HTTPS for HuggingFace Spaces
+        const secureRedirectUrl = redirectUrl.replace(/^http:\/\//i, 'https://');
         const verifyEndpoint = '{{ url_for("verify_turnstile") }}';
         const statusMessage = document.getElementById('status-message');
         const submitButton = document.getElementById('submit-btn');
@@ -208,7 +210,7 @@
             // Create form data
             const formData = new FormData();
             formData.append('cf-turnstile-response', turnstileToken);
-            formData.append('redirect_url', redirectUrl);
+            formData.append('redirect_url', secureRedirectUrl);
             
             // Send verification request
             fetch(verifyEndpoint, {
@@ -228,7 +230,7 @@
                     return response.json().then(data => {
                         if (data.success) {
                             // If we got a JSON success response, redirect
-                            window.location.href = redirectUrl;
+                            window.location.href = secureRedirectUrl;
                         } else {
                             throw new Error("Verification failed");
                         }
