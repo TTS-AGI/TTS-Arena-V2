@@ -29,8 +29,8 @@ jobs:
           # Clone the HF space repo
           git clone https://$HF_USERNAME:$HF_TOKEN@huggingface.co/spaces/$HF_USERNAME/$SPACE_NAME hf-space
           
-          # Copy all files to the space repo (except .git)
-          rsync -av --exclude='.git' ./ hf-space/
+          # Copy all files to the space repo (except .git and hf-space folder)
+          rsync -av --exclude='.git' --exclude='hf-space' ./ hf-space/
 
           cd hf-space
           git add .
