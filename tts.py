@@ -122,6 +122,7 @@ def predict_playdialog(script):
 
 def predict_tts(text, model):
     global client
+    print(f"Predicting TTS for {model}")
     # Exceptions: special models that shouldn't be passed to the router
     if model == "csm-1b":
         return predict_csm(text)
