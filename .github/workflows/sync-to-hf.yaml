@@ -31,6 +31,11 @@ jobs:
           
           # Copy all files to the space repo (except .git and hf-space folder)
           rsync -av --exclude='.git' --exclude='hf-space' ./ hf-space/
+          
+          # Rename SPACES_README.md to README.md for Hugging Face
+          if [ -f hf-space/SPACES_README.md ]; then
+            mv hf-space/SPACES_README.md hf-space/README.md
+          fi
 
           cd hf-space
           git add .
