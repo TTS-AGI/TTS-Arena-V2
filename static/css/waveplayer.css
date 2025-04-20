@@ -10,6 +10,11 @@
   overflow: hidden;
 }
 
+/* Hide native audio elements */
+.waveplayer audio {
+  display: none !important;
+}
+
 .waveplayer-controls {
   display: flex;
   align-items: center;
@@ -104,5 +109,26 @@
   
   .waveplayer-loading {
     background-color: rgba(30, 30, 36, 0.7);
+  }
+} 
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .waveplayer {
+    padding: 12px;
+  }
+  
+  .waveplayer-play-btn {
+    width: 44px;
+    height: 44px;
+  }
+  
+  .waveplayer-waveform {
+    height: 70px;
+    touch-action: none; /* Prevents scroll/zoom on touch */
+  }
+  
+  .waveplayer-time {
+    font-size: 12px;
   }
 } 

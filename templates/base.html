@@ -933,54 +933,64 @@
         /* Mobile login banner */
         .login-banner {
             position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            background-color: var(--primary-color);
-            color: white;
-            padding: 16px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 85%;
+            max-width: 320px;
+            background-color: white;
+            color: var(--text-color);
+            border-radius: var(--radius);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            padding: 20px;
             display: none;
             z-index: 9998;
-            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
-            padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+            text-align: center;
+            border: 1px solid var(--border-color);
         }
 
         .login-banner-content {
-            margin-bottom: 12px;
-            font-size: 14px;
-            text-align: center;
+            margin-bottom: 16px;
+            font-size: 15px;
+            font-weight: 500;
         }
 
         .login-banner-actions {
             display: flex;
-            justify-content: space-between;
+            flex-direction: column;
+            gap: 12px;
             align-items: center;
-            max-width: 280px;
-            margin: 0 auto;
         }
 
         .login-banner-close {
             background: none;
             border: none;
-            color: white;
-            font-size: 16px;
+            color: var(--text-color);
+            font-size: 14px;
             cursor: pointer;
-            opacity: 0.8;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            opacity: 0.7;
             padding: 8px;
         }
 
         .login-banner-btn {
-            background-color: white;
-            color: var(--primary-color);
+            background-color: var(--primary-color);
+            color: white;
             border: none;
-            border-radius: 4px;
-            padding: 8px 16px;
+            border-radius: var(--radius);
+            padding: 10px 24px;
             cursor: pointer;
             font-weight: 500;
             text-decoration: none;
+            width: 100%;
+            display: block;
+            text-align: center;
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            .login-banner {
+                background-color: var(--light-gray);
+                border-color: var(--border-color);
+            }
         }
     </style>
 </head>
@@ -1078,22 +1088,6 @@
             </div>
             <div class="login-tip-caret"></div>
         </div>
-        
-        <!-- Mobile login banner -->
-        <div id="login-banner" class="login-banner">
-            <div class="login-banner-content">
-                Log in to track your votes and see personalized leaderboards!
-            </div>
-            <div class="login-banner-actions">
-                <button class="login-banner-close" onclick="dismissLoginTip()">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                </button>
-                <a href="{{ url_for('auth.login', next=request.path) }}" class="login-banner-btn">Login</a>
-            </div>
-        </div>
         {% endif %}
     </div>
 
@@ -1120,6 +1114,24 @@
 
     <!-- Toast container -->
     <div class="toast-container" id="toast-container"></div>
+
+    {% if not current_user.is_authenticated %}
+    <!-- Mobile login banner -->
+    <div id="login-banner" class="login-banner">
+        <div class="login-banner-content">
+            Log in to track your votes and see personalized leaderboards!
+        </div>
+        <div class="login-banner-actions">
+            <button class="login-banner-close" onclick="dismissLoginTip()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+            <a href="{{ url_for('auth.login', next=request.path) }}" class="login-banner-btn">Login</a>
+        </div>
+    </div>
+    {% endif %}
 
     {% block extra_scripts %}{% endblock %}
     <script src="https://unpkg.com/@popperjs/core@2"></script>
@@ -1159,6 +1171,7 @@
                 // Hide all login notifications
                 const loginTip = document.getElementById('login-tip-overlay');
                 const loginBanner = document.getElementById('login-banner');
+                const backdrop = document.querySelector('.login-backdrop');
                 
                 if (loginTip) {
                     loginTip.classList.remove('show');
@@ -1166,12 +1179,17 @@
                 
                 if (loginBanner) {
                     loginBanner.style.display = 'none';
+                }
+                
+                if (backdrop) {
+                    backdrop.style.display = 'none';
                 }
             } catch (error) {
                 console.warn('localStorage write failed:', error);
                 // Still hide the tips even if localStorage fails
                 const loginTip = document.getElementById('login-tip-overlay');
                 const loginBanner = document.getElementById('login-banner');
+                const backdrop = document.querySelector('.login-backdrop');
                 
                 if (loginTip) {
                     loginTip.classList.remove('show');
@@ -1179,6 +1197,10 @@
                 
                 if (loginBanner) {
                     loginBanner.style.display = 'none';
+                }
+                
+                if (backdrop) {
+                    backdrop.style.display = 'none';
                 }
             }
         }
@@ -1193,9 +1215,28 @@
             if (loginLink && !isLoginTipDismissed()) {
                 // Check screen width to determine which login notification to show
                 if (window.innerWidth <= 768) {
-                    // Show mobile banner
+                    // Create and add a backdrop for the login banner
+                    const backdrop = document.createElement('div');
+                    backdrop.className = 'login-backdrop';
+                    backdrop.style.position = 'fixed';
+                    backdrop.style.top = '0';
+                    backdrop.style.left = '0';
+                    backdrop.style.width = '100%';
+                    backdrop.style.height = '100%';
+                    backdrop.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+                    backdrop.style.zIndex = '9997';
+                    backdrop.style.display = 'none';
+                    document.body.appendChild(backdrop);
+                    
+                    // Show mobile banner with backdrop
                     if (loginBanner) {
                         loginBanner.style.display = 'block';
+                        backdrop.style.display = 'block';
+                        
+                        // Add event listener to close banner when clicking backdrop
+                        backdrop.addEventListener('click', function() {
+                            dismissLoginTip();
+                        });
                     }
                 } else {
                     // Show desktop popover
@@ -1223,18 +1264,22 @@
             window.addEventListener('resize', function() {
                 if (isLoginTipDismissed()) return;
                 
+                const backdrop = document.querySelector('.login-backdrop');
+                
                 if (window.innerWidth <= 768) {
                     // Switch to mobile banner
                     if (loginTipOverlay) {
                         loginTipOverlay.classList.remove('show');
                     }
-                    if (loginBanner) {
+                    if (loginBanner && backdrop) {
                         loginBanner.style.display = 'block';
+                        backdrop.style.display = 'block';
                     }
                 } else {
                     // Switch to desktop popover
-                    if (loginBanner) {
+                    if (loginBanner && backdrop) {
                         loginBanner.style.display = 'none';
+                        backdrop.style.display = 'none';
                     }
                     if (loginTipOverlay && loginLink) {
                         const popperInstance = Popper.createPopper(loginLink, loginTipOverlay, {
@@ -1308,7 +1353,7 @@
             } else if (type === 'success') {
                 iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
             } else if (type === 'warning') {
-                iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+                iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12" y2="17"/></svg>';
             } else if (type === 'error') {
                 iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>';
             }

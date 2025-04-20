@@ -1664,14 +1664,14 @@
                 // Initialize WavePlayers if not already done
                 if (!podcastWavePlayers.a) {
                     podcastWavePlayers.a = new WavePlayer(podcastWavePlayerA, {
-                        // Add mobile-friendly options
-                        mediaControls: true,
-                        backend: 'MediaElement'
+                        // Add mobile-friendly options but hide native controls
+                        backend: 'MediaElement',
+                        mediaControls: false // Hide native audio controls
                     });
                     podcastWavePlayers.b = new WavePlayer(podcastWavePlayerB, {
-                        // Add mobile-friendly options
-                        mediaControls: true,
-                        backend: 'MediaElement'
+                        // Add mobile-friendly options but hide native controls
+                        backend: 'MediaElement',
+                        mediaControls: false // Hide native audio controls
                     });
                     
                     // Load audio in waveplayers

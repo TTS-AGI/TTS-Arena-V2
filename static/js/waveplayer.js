@@ -38,6 +38,30 @@ class WavePlayer {
     this.container.innerHTML = '';
     this.container.classList.add('waveplayer');
     
+    // Add style to hide native audio elements that might be rendered by wavesurfer
+    const style = document.createElement('style');
+    style.textContent = `
+      .waveplayer audio {
+        display: none !important;
+      }
+      
+      /* Mobile optimizations */
+      @media (max-width: 768px) {
+        .waveplayer-play-btn {
+          width: 44px;
+          height: 44px;
+          margin-right: 12px;
+        }
+        
+        .waveplayer-waveform {
+          height: 70px;
+          cursor: pointer;
+          touch-action: none; /* Prevents scroll/zoom on touch */
+        }
+      }
+    `;
+    this.container.appendChild(style);
+    
     // Create elements
     const waveformContainer = document.createElement('div');
     waveformContainer.className = 'waveplayer-waveform';
@@ -104,6 +128,12 @@ class WavePlayer {
     this.playButton.addEventListener('touchstart', (e) => {
       e.preventDefault();
       this.togglePlayPause();
+    });
+    
+    // Add touch support for waveform container
+    this.waveformContainer.addEventListener('touchstart', (e) => {
+      // This helps ensure the touch events propagate correctly to wavesurfer
+      e.stopPropagation();
     });
     
     // Wavesurfer events
