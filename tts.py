@@ -134,6 +134,16 @@ def predict_tts(text, model):
         "model": model_mapping[model]["model"]
     }))
     
+    response_json = result.json()
+    audio_data = response_json["audio_data"]
+    audio_type = response_json["audio_type"]
+    
+    # Save audio to a temporary file
+    import tempfile
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=f".{audio_type}")
+    temp_file.write(audio_data.encode('utf-8') if isinstance(audio_data, str) else audio_data)
+    temp_file.close()
+    
     return result.content
 
 if __name__ == "__main__":

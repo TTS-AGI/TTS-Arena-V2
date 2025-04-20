@@ -846,17 +846,13 @@
         /* Login tip overlay */
         .login-tip-overlay {
             position: absolute;
-            bottom: 100%;
-            left: 0;
-            right: 0;
-            margin: 0 16px 8px 16px;
             background-color: white;
             border: 1px solid var(--border-color);
             border-radius: var(--radius);
             box-shadow: var(--shadow);
             padding: 16px;
             z-index: 1000;
-            margin-bottom: 12px;
+            width: 280px;
             display: none;
         }
 
@@ -894,7 +890,7 @@
             cursor: pointer;
         }
 
-        .login-tip-caret {
+        .login-tip-overlay[data-popper-placement^='top'] .login-tip-caret {
             position: absolute;
             bottom: -8px;
             left: 50%;
@@ -904,7 +900,7 @@
             overflow: hidden;
         }
 
-        .login-tip-caret:after {
+        .login-tip-overlay[data-popper-placement^='top'] .login-tip-caret:after {
             content: '';
             position: absolute;
             width: 12px;
@@ -922,12 +918,12 @@
                 background-color: var(--light-gray);
                 border-color: var(--border-color);
             }
-
-            .login-tip-caret:after {
+            
+            .login-tip-overlay[data-popper-placement^='top'] .login-tip-caret:after {
                 background: var(--light-gray);
                 border-color: var(--border-color);
             }
-
+            
             .login-tip-close {
                 color: var(--text-color);
             }
@@ -1056,6 +1052,7 @@
     <div class="toast-container" id="toast-container"></div>
 
     {% block extra_scripts %}{% endblock %}
+    <script src="https://unpkg.com/@popperjs/core@2"></script>
     <script>
         function toggleSidebar() {
             const sidebar = document.querySelector('.sidebar');
@@ -1085,7 +1082,7 @@
             const expiryDate = new Date();
             expiryDate.setDate(expiryDate.getDate() + 30);
             document.cookie = `login_tip_dismissed=true; expires=${expiryDate.toUTCString()}; path=/`;
-
+            
             // Hide the tip
             const loginTip = document.getElementById('login-tip-overlay');
             if (loginTip) {
@@ -1097,12 +1094,29 @@
         document.addEventListener('DOMContentLoaded', function () {
             // Show login tip if user is not logged in and hasn't dismissed it
             const loginTipOverlay = document.getElementById('login-tip-overlay');
-            if (loginTipOverlay && !isLoginTipDismissed()) {
+            const loginLink = document.querySelector('.login-link');
+            
+            if (loginTipOverlay && loginLink && !isLoginTipDismissed()) {
+                // Position the overlay with Popper.js
+                const popperInstance = Popper.createPopper(loginLink, loginTipOverlay, {
+                    placement: 'top',
+                    modifiers: [
+                        {
+                            name: 'offset',
+                            options: {
+                                offset: [0, 10],
+                            },
+                        },
+                    ],
+                });
+                
                 setTimeout(() => {
                     loginTipOverlay.classList.add('show');
+                    // Update position after showing
+                    popperInstance.update();
                 }, 1000); // Show after 1 second
             }
-
+            
             // Hide the loading overlay when page has loaded
             const loadingOverlay = document.getElementById('loading-overlay');
             loadingOverlay.classList.remove('active');
