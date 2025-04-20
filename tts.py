@@ -138,7 +138,7 @@ def predict_tts(text, model):
     }))
     
     response_json = result.json()
-    print(response_json)
+
     audio_data = response_json["audio_data"] # base64 encoded audio data
     audio_type = response_json["mime_type"] # TODO: Switch to 'extension' - more accurate
     # Decode the base64 audio data
