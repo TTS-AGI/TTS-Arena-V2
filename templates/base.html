@@ -1122,12 +1122,7 @@
             Log in to track your votes and see personalized leaderboards!
         </div>
         <div class="login-banner-actions">
-            <button class="login-banner-close" onclick="dismissLoginTip()">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-            </button>
+            <button class="login-banner-close" onclick="dismissLoginTip()">No thanks</button>
             <a href="{{ url_for('auth.login', next=request.path) }}" class="login-banner-btn">Login</a>
         </div>
     </div>
