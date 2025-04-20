@@ -9,6 +9,9 @@ import time
 import io
 from pyht import Client as PyhtClient
 from pyht.client import TTSOptions
+import base64
+import tempfile
+
 
 load_dotenv()
 
@@ -135,16 +138,21 @@ def predict_tts(text, model):
     }))
     
     response_json = result.json()
-    audio_data = response_json["audio_data"]
+    print(response_json)
+    audio_data = response_json["audio_data"] # base64 encoded audio data
     audio_type = response_json["mime_type"] # TODO: Switch to 'extension' - more accurate
+    # Decode the base64 audio data
+    audio_bytes = base64.b64decode(audio_data)
     
-    # Save audio to a temporary file
-    import tempfile
-    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=f".{audio_type}")
-    temp_file.write(audio_data.encode('utf-8') if isinstance(audio_data, str) else audio_data)
-    temp_file.close()
+    # Extract just the extension part from mime_type (e.g., 'mp3' from 'audio/mp3' or just 'mp3')
+    extension = audio_type.split('/')[-1] if '/' in audio_type else audio_type
     
-    return result.content
+    # Create a temporary file to store the audio data
+    with tempfile.NamedTemporaryFile(delete=False, suffix=f".{extension}") as temp_file:
+        temp_file.write(audio_bytes)
+        temp_path = temp_file.name
+    
+    return temp_path
 
 if __name__ == "__main__":
     print("Predicting PlayDialog")

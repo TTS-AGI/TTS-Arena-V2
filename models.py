@@ -404,6 +404,7 @@ def insert_initial_models():
             name="PlayHT 3.0 Mini",
             model_type=ModelType.TTS,
             is_open=False,
+            is_active=False,
             model_url="https://play.ht/",
         ),
         Model(
