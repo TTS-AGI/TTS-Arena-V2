@@ -136,7 +136,7 @@ def predict_tts(text, model):
     
     response_json = result.json()
     audio_data = response_json["audio_data"]
-    audio_type = response_json["audio_type"]
+    audio_type = response_json["mime_type"]
     
     # Save audio to a temporary file
     import tempfile
