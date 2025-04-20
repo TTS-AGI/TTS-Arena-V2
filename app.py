@@ -1,6 +1,7 @@
 import os
 from huggingface_hub import HfApi, hf_hub_download
 from apscheduler.schedulers.background import BackgroundScheduler
+from concurrent.futures import ThreadPoolExecutor
 
 # Check if running in a Huggin Face Space
 IS_SPACES = False
@@ -332,11 +333,12 @@ def generate_tts():
     selected_models = random.sample(available_models, 2)
 
     try:
-        # Generate TTS for both models
+        # Generate TTS for both models concurrently
         audio_files = []
         model_ids = []
-
-        for model in selected_models:
+        
+        # Function to process a single model
+        def process_model(model):
             # Call TTS service
             audio_path = predict_tts(text, model.id)
 
@@ -344,9 +346,20 @@ def generate_tts():
             file_uuid = str(uuid.uuid4())
             dest_path = os.path.join(TEMP_AUDIO_DIR, f"{file_uuid}.wav")
             shutil.copy(audio_path, dest_path)
-
-            audio_files.append(dest_path)
-            model_ids.append(model.id)
+            
+            return {
+                "model_id": model.id,
+                "audio_path": dest_path
+            }
+        
+        # Use ThreadPoolExecutor to process models concurrently
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            results = list(executor.map(process_model, selected_models))
+        
+        # Extract results
+        for result in results:
+            model_ids.append(result["model_id"])
+            audio_files.append(result["audio_path"])
 
         # Create session
         session_id = str(uuid.uuid4())
@@ -523,11 +536,12 @@ def generate_podcast():
     selected_models = random.sample(available_models, 2)
     
     try:
-        # Generate audio for both models
+        # Generate audio for both models concurrently
         audio_files = []
         model_ids = []
         
-        for model in selected_models:
+        # Function to process a single model
+        def process_model(model):
             # Call conversational TTS service
             audio_content = predict_tts(script, model.id)
             
@@ -538,8 +552,19 @@ def generate_podcast():
             with open(dest_path, 'wb') as f:
                 f.write(audio_content)
             
-            audio_files.append(dest_path)
-            model_ids.append(model.id)
+            return {
+                "model_id": model.id,
+                "audio_path": dest_path
+            }
+        
+        # Use ThreadPoolExecutor to process models concurrently
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            results = list(executor.map(process_model, selected_models))
+        
+        # Extract results
+        for result in results:
+            model_ids.append(result["model_id"])
+            audio_files.append(result["audio_path"])
         
         # Create session
         session_id = str(uuid.uuid4())
