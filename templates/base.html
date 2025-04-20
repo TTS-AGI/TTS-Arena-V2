@@ -1110,11 +1110,8 @@
                     ],
                 });
                 
-                setTimeout(() => {
-                    loginTipOverlay.classList.add('show');
-                    // Update position after showing
-                    popperInstance.update();
-                }, 1000); // Show after 1 second
+                loginTipOverlay.classList.add('show');
+                popperInstance.update();
             }
             
             // Hide the loading overlay when page has loaded
