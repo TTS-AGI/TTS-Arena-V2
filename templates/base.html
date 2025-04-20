@@ -929,6 +929,59 @@
                 color: var(--text-color);
             }
         }
+
+        /* Mobile login banner */
+        .login-banner {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: var(--primary-color);
+            color: white;
+            padding: 16px;
+            display: none;
+            z-index: 9998;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
+            padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+        }
+
+        .login-banner-content {
+            margin-bottom: 12px;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .login-banner-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 280px;
+            margin: 0 auto;
+        }
+
+        .login-banner-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            opacity: 0.8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px;
+        }
+
+        .login-banner-btn {
+            background-color: white;
+            color: var(--primary-color);
+            border: none;
+            border-radius: 4px;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-weight: 500;
+            text-decoration: none;
+        }
     </style>
 </head>
 
@@ -1025,6 +1078,22 @@
             </div>
             <div class="login-tip-caret"></div>
         </div>
+        
+        <!-- Mobile login banner -->
+        <div id="login-banner" class="login-banner">
+            <div class="login-banner-content">
+                Log in to track your votes and see personalized leaderboards!
+            </div>
+            <div class="login-banner-actions">
+                <button class="login-banner-close" onclick="dismissLoginTip()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+                <a href="{{ url_for('auth.login', next=request.path) }}" class="login-banner-btn">Login</a>
+            </div>
+        </div>
         {% endif %}
     </div>
 
@@ -1087,17 +1156,29 @@
                 // Store the preference in localStorage
                 localStorage.setItem('login_tip_dismissed', 'true');
                 
-                // Hide the tip
+                // Hide all login notifications
                 const loginTip = document.getElementById('login-tip-overlay');
+                const loginBanner = document.getElementById('login-banner');
+                
                 if (loginTip) {
                     loginTip.classList.remove('show');
                 }
+                
+                if (loginBanner) {
+                    loginBanner.style.display = 'none';
+                }
             } catch (error) {
                 console.warn('localStorage write failed:', error);
-                // Still hide the tip even if localStorage fails
+                // Still hide the tips even if localStorage fails
                 const loginTip = document.getElementById('login-tip-overlay');
+                const loginBanner = document.getElementById('login-banner');
+                
                 if (loginTip) {
                     loginTip.classList.remove('show');
+                }
+                
+                if (loginBanner) {
+                    loginBanner.style.display = 'none';
                 }
             }
         }
@@ -1106,25 +1187,73 @@
         document.addEventListener('DOMContentLoaded', function () {
             // Show login tip if user is not logged in and hasn't dismissed it
             const loginTipOverlay = document.getElementById('login-tip-overlay');
+            const loginBanner = document.getElementById('login-banner');
             const loginLink = document.querySelector('.login-link');
             
-            if (loginTipOverlay && loginLink && !isLoginTipDismissed()) {
-                // Position the overlay with Popper.js
-                const popperInstance = Popper.createPopper(loginLink, loginTipOverlay, {
-                    placement: 'top',
-                    modifiers: [
-                        {
-                            name: 'offset',
-                            options: {
-                                offset: [0, 10],
-                            },
-                        },
-                    ],
-                });
-                
-                loginTipOverlay.classList.add('show');
-                popperInstance.update();
+            if (loginLink && !isLoginTipDismissed()) {
+                // Check screen width to determine which login notification to show
+                if (window.innerWidth <= 768) {
+                    // Show mobile banner
+                    if (loginBanner) {
+                        loginBanner.style.display = 'block';
+                    }
+                } else {
+                    // Show desktop popover
+                    if (loginTipOverlay) {
+                        // Position the overlay with Popper.js
+                        const popperInstance = Popper.createPopper(loginLink, loginTipOverlay, {
+                            placement: 'top',
+                            modifiers: [
+                                {
+                                    name: 'offset',
+                                    options: {
+                                        offset: [0, 10],
+                                    },
+                                },
+                            ],
+                        });
+                        
+                        loginTipOverlay.classList.add('show');
+                        popperInstance.update();
+                    }
+                }
             }
+            
+            // Handle resize events to switch between banner and popover
+            window.addEventListener('resize', function() {
+                if (isLoginTipDismissed()) return;
+                
+                if (window.innerWidth <= 768) {
+                    // Switch to mobile banner
+                    if (loginTipOverlay) {
+                        loginTipOverlay.classList.remove('show');
+                    }
+                    if (loginBanner) {
+                        loginBanner.style.display = 'block';
+                    }
+                } else {
+                    // Switch to desktop popover
+                    if (loginBanner) {
+                        loginBanner.style.display = 'none';
+                    }
+                    if (loginTipOverlay && loginLink) {
+                        const popperInstance = Popper.createPopper(loginLink, loginTipOverlay, {
+                            placement: 'top',
+                            modifiers: [
+                                {
+                                    name: 'offset',
+                                    options: {
+                                        offset: [0, 10],
+                                    },
+                                },
+                            ],
+                        });
+                        
+                        loginTipOverlay.classList.add('show');
+                        popperInstance.update();
+                    }
+                }
+            });
             
             // Hide the loading overlay when page has loaded
             const loadingOverlay = document.getElementById('loading-overlay');

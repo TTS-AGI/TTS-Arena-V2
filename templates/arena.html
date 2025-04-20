@@ -1020,9 +1020,9 @@
         wavePlayerContainers.forEach(container => {
             const model = container.dataset.model;
             wavePlayers[model] = new WavePlayer(container, {
-                // Add mobile-friendly options
-                mediaControls: true,
-                backend: 'MediaElement'
+                // Add mobile-friendly options but hide native controls
+                backend: 'MediaElement',
+                mediaControls: false // Hide native audio controls
             });
         });
         
