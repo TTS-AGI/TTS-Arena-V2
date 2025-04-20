@@ -141,12 +141,9 @@ def predict_tts(text, model):
     response_json = result.json()
 
     audio_data = response_json["audio_data"] # base64 encoded audio data
-    audio_type = response_json["extension"]
+    extension = response_json["extension"]
     # Decode the base64 audio data
     audio_bytes = base64.b64decode(audio_data)
-    
-    # Extract just the extension part from mime_type (e.g., 'mp3' from 'audio/mp3' or just 'mp3')
-    extension = audio_type
     
     # Create a temporary file to store the audio data
     with tempfile.NamedTemporaryFile(delete=False, suffix=f".{extension}") as temp_file:
