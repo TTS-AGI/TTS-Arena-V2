@@ -1,7 +1,7 @@
 # TODO: V2 of TTS Router
 # Currently just use current TTS router.
+from gradio_client import Client
 import os
-import json
 from dotenv import load_dotenv
 import fal_client
 import requests
@@ -12,51 +12,22 @@ from pyht.client import TTSOptions
 
 load_dotenv()
 
+try:
+    client = Client("TTS-AGI/tts-router", hf_token=os.getenv("HF_TOKEN"))
+except Exception as e:
+    print(f"Error initializing client: {e}")
+    client = None
 
 model_mapping = {
-    "eleven-multilingual-v2": {
-        "provider": "elevenlabs",
-        "model": "eleven_multilingual_v2"
-    },
-    "playht-2.0": {
-        "provider": "playht",
-        "model": "PlayHT2.0"
-    },
-    "styletts2": {
-        "provider": "styletts",
-        "model": "styletts2"
-    },
-    "kokoro-v1": {
-        "provider": "kokoro",
-        "model": "kokoro_v1"
-    },
-    "cosyvoice-2.0": {
-        "provider": "cosyvoice",
-        "model": "cosyvoice_2_0"
-    },
-    "papla-p1": {
-        "provider": "papla",
-        "model": "papla_p1"
-    },
-    "hume-octave": {
-        "provider": "hume",
-        "model": "octave"
-    },
+    "eleven-multilingual-v2": "eleven",
+    "playht-2.0": "playht",
+    "styletts2": "styletts2",
+    "kokoro-v1": "kokorov1",
+    "cosyvoice-2.0": "cosyvoice",
+    "playht-3.0-mini": "playht3",
+    "papla-p1": "papla",
+    "hume-octave": "hume",
 }
-
-url = 'https://tts-agi-tts-router-v2.hf.space/tts'
-headers = {
-    'accept': 'application/json',
-    'Content-Type': 'application/json',
-    'Authorization': f'Bearer {os.getenv("HF_TOKEN")}'
-}
-data = {
-    'text': 'string',
-    'provider': 'string',
-    'model': 'string'
-}
-
-
 
 def predict_csm(script):
     result = fal_client.subscribe(
@@ -127,14 +98,10 @@ def predict_tts(text, model):
     
     if not model in model_mapping:
         raise ValueError(f"Model {model} not found")
-    
-    result = requests.post(url, headers=headers, data=json.dumps({
-        "text": text,
-        "provider": model_mapping[model]["provider"],
-        "model": model_mapping[model]["model"]
-    }))
-    
-    return result.content
+    result = client.predict(
+        text=text, model=model_mapping[model], api_name="/synthesize"
+    )  # returns path to audio file
+    return result
 
 if __name__ == "__main__":
     print("Predicting PlayDialog")

@@ -520,6 +520,7 @@
                 transform: translateX(100%);
                 opacity: 0;
             }
+
             to {
                 transform: translateX(0);
                 opacity: 1;
@@ -531,6 +532,7 @@
                 transform: translateX(0);
                 opacity: 1;
             }
+
             to {
                 transform: translateX(100%);
                 opacity: 0;
@@ -637,38 +639,38 @@
                 --warning-color: #f59e0b;
                 --error-color: #ef4444;
             }
-            
+
             body {
                 background-color: #121218;
                 color: var(--text-color);
             }
-            
+
             .sidebar {
                 background-color: var(--light-gray);
                 border-right-color: var(--border-color);
             }
-            
+
             .nav-item.active {
                 background-color: rgba(108, 99, 255, 0.2);
             }
-            
+
             .nav-item:hover:not(.active) {
                 background-color: rgba(255, 255, 255, 0.05);
             }
-            
-            .text-input, 
+
+            .text-input,
             .select-input,
             .textarea {
                 background-color: var(--light-gray);
                 color: var(--text-color);
                 border-color: var(--border-color);
             }
-            
+
             .card {
                 background-color: var(--light-gray);
                 border-color: var(--border-color);
             }
-            
+
             .tab.active::after {
                 background-color: var(--primary-color);
             }
@@ -749,23 +751,23 @@
             .toast-close {
                 color: var(--text-color);
             }
-            
+
             ::-webkit-scrollbar-track {
                 background: var(--secondary-color);
             }
-            
+
             ::-webkit-scrollbar-thumb {
                 background: rgba(180, 180, 180, 0.5);
             }
-            
+
             ::-webkit-scrollbar-thumb:hover {
                 background: rgba(200, 200, 200, 0.7);
             }
-            
+
             * {
                 scrollbar-color: rgba(180, 180, 180, 0.5) var(--secondary-color);
             }
-            
+
             ::-webkit-scrollbar-corner {
                 background: var(--secondary-color);
             }
@@ -774,7 +776,7 @@
             .loading-overlay {
                 background-color: rgba(18, 18, 24, 0.8);
             }
-            
+
             /* Dark mode spinner */
             .loader-spinner {
                 border-color: rgba(108, 99, 255, 0.2);
@@ -786,19 +788,19 @@
                 background-color: var(--light-gray);
                 border-color: var(--border-color);
             }
-            
+
             .dropdown-item {
                 color: var(--text-color);
             }
-            
+
             .dropdown-item:hover {
                 background-color: rgba(108, 99, 255, 0.1);
             }
-            
+
             .dropdown-divider {
                 background-color: var(--border-color);
             }
-            
+
             .user-avatar {
                 background-color: var(--primary-color);
             }
@@ -820,12 +822,12 @@
             visibility: hidden;
             transition: opacity 0.3s ease, visibility 0.3s ease;
         }
-        
+
         .loading-overlay.active {
             opacity: 1;
             visibility: visible;
         }
-        
+
         .loader-spinner {
             width: 50px;
             height: 50px;
@@ -834,9 +836,101 @@
             border-top-color: var(--primary-color);
             animation: spin 1s ease-in-out infinite;
         }
-        
+
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Login tip overlay */
+        .login-tip-overlay {
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            right: 0;
+            margin: 0 16px 8px 16px;
+            background-color: white;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 16px;
+            z-index: 1000;
+            margin-bottom: 12px;
+            display: none;
+        }
+
+        .login-tip-overlay.show {
+            display: block;
+        }
+
+        .login-tip-content {
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+
+        .login-tip-actions {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .login-tip-close {
+            font-size: 13px;
+            color: var(--text-color);
+            opacity: 0.7;
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 0;
+        }
+
+        .login-now-btn {
+            font-size: 13px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 6px 12px;
+            cursor: pointer;
+        }
+
+        .login-tip-caret {
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 16px;
+            height: 8px;
+            overflow: hidden;
+        }
+
+        .login-tip-caret:after {
+            content: '';
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: white;
+            border-right: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+            top: -6px;
+            left: 2px;
+            transform: rotate(45deg);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .login-tip-overlay {
+                background-color: var(--light-gray);
+                border-color: var(--border-color);
+            }
+
+            .login-tip-caret:after {
+                background: var(--light-gray);
+                border-color: var(--border-color);
+            }
+
+            .login-tip-close {
+                color: var(--text-color);
+            }
         }
     </style>
 </head>
@@ -846,7 +940,7 @@
     <div id="loading-overlay" class="loading-overlay">
         <div class="loader-spinner"></div>
     </div>
-    
+
     <div class="mobile-header">
         <div class="hamburger-menu" onclick="toggleSidebar()">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -880,13 +974,13 @@
                 Arena
             </a>
             <a href="{{ url_for('leaderboard') }}" class="nav-item {% if request.endpoint == 'leaderboard' %}active{% endif %}">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-list-ordered-icon lucide-list-ordered">
-                    <path d="M10 12h11" />
-                    <path d="M10 18h11" />
-                    <path d="M10 6h11" />
-                    <path d="M4 10h2" />
-                    <path d="M4 6h1v4" />
-                    <path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1" />
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trophy-icon lucide-trophy">
+                    <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
+                    <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+                    <path d="M4 22h16" />
+                    <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
+                    <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
+                    <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
                 </svg>
                 Leaderboard
             </a>
@@ -906,7 +1000,7 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="user-auth-arrow">
                 <polyline points="6 9 12 15 18 9"></polyline>
             </svg>
-            
+
             <div class="user-dropdown">
                 <a href="{{ url_for('auth.logout') }}" class="dropdown-item">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -923,25 +1017,36 @@
             <img src="{{ url_for('static', filename='huggingface.svg') }}" alt="Hugging Face">
             Login
         </a>
+        <!-- Login tip overlay -->
+        <div id="login-tip-overlay" class="login-tip-overlay">
+            <div class="login-tip-content">
+                Log in to track your votes, see personalized leaderboards, and more!
+            </div>
+            <div class="login-tip-actions">
+                <button class="login-tip-close" onclick="dismissLoginTip()">Don't show again</button>
+                <a href="{{ url_for('auth.login', next=request.path) }}" class="login-now-btn">Login now</a>
+            </div>
+            <div class="login-tip-caret"></div>
+        </div>
         {% endif %}
     </div>
 
     <div class="main-content">
         <!-- Flash messages -->
         {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <div class="flash-messages">
-                    {% for category, message in messages %}
-                        <script>
-                            document.addEventListener('DOMContentLoaded', function() {
-                                openToast('{{ message }}', '{{ category }}');
-                            });
-                        </script>
-                    {% endfor %}
-                </div>
-            {% endif %}
+        {% if messages %}
+        <div class="flash-messages">
+            {% for category, message in messages %}
+            <script>
+                document.addEventListener('DOMContentLoaded', function () {
+                    openToast('{{ message }}', '{{ category }}');
+                });
+            </script>
+            {% endfor %}
+        </div>
+        {% endif %}
         {% endwith %}
-        
+
         <div class="main-content-inner">
             {% block content %}{% endblock %}
         </div>
@@ -967,43 +1072,60 @@
             userDropdown.classList.toggle('active');
         }
 
+        // Function to check if the login tip has been dismissed
+        function isLoginTipDismissed() {
+            return document.cookie.split(';').some(cookie => {
+                return cookie.trim().startsWith('login_tip_dismissed=true');
+            });
+        }
+
+        // Function to set cookie when login tip is dismissed
+        function dismissLoginTip() {
+            // Set cookie to expire in 30 days
+            const expiryDate = new Date();
+            expiryDate.setDate(expiryDate.getDate() + 30);
+            document.cookie = `login_tip_dismissed=true; expires=${expiryDate.toUTCString()}; path=/`;
+
+            // Hide the tip
+            const loginTip = document.getElementById('login-tip-overlay');
+            if (loginTip) {
+                loginTip.classList.remove('show');
+            }
+        }
+
         // Loading overlay functionality
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
+            // Show login tip if user is not logged in and hasn't dismissed it
+            const loginTipOverlay = document.getElementById('login-tip-overlay');
+            if (loginTipOverlay && !isLoginTipDismissed()) {
+                setTimeout(() => {
+                    loginTipOverlay.classList.add('show');
+                }, 1000); // Show after 1 second
+            }
+
             // Hide the loading overlay when page has loaded
             const loadingOverlay = document.getElementById('loading-overlay');
             loadingOverlay.classList.remove('active');
-            
-            // Show loading overlay when sidebar links are clicked
-            const sidebarLinks = document.querySelectorAll('.sidebar .nav-item');
-            sidebarLinks.forEach(link => {
-                link.addEventListener('click', function(e) {
-                    // Don't show overlay if it's the current active page
-                    if (!this.classList.contains('active')) {
-                        // TODO: renable this
-                        // loadingOverlay.classList.add('active');
-                    }
-                });
-            });
-            
+
             // Override fetch to handle Turnstile verification errors
             const originalFetch = window.fetch;
-            window.fetch = async function(url, options) {
+            window.fetch = async function (url, options) {
                 try {
                     const response = await originalFetch(url, options);
-                    
+
                     // If we get a 403 error with a specific error message, handle verification
                     if (response.status === 403) {
                         const data = await response.clone().json();
                         if (data && (data.error === "Turnstile verification required" || data.error === "Turnstile verification expired")) {
                             // Redirect to Turnstile verification page with the current URL as the redirect target
                             window.location.href = "/turnstile?redirect_url=" + encodeURIComponent(window.location.href);
-                            return new Response(JSON.stringify({ redirecting: true }), { 
+                            return new Response(JSON.stringify({ redirecting: true }), {
                                 status: 200,
                                 headers: { 'Content-Type': 'application/json' }
                             });
                         }
                     }
-                    
+
                     return response;
                 } catch (error) {
                     return Promise.reject(error);
@@ -1012,7 +1134,7 @@
         });
 
         // Close dropdown when clicking outside
-        document.addEventListener('click', function(event) {
+        document.addEventListener('click', function (event) {
             const userDropdown = document.querySelector('.user-dropdown');
             const userAuth = document.querySelector('.user-auth');
             if (userDropdown && userAuth && userDropdown.classList.contains('active') && !userAuth.contains(event.target)) {
@@ -1026,7 +1148,7 @@
             const toastContainer = document.getElementById('toast-container');
             const toast = document.createElement('div');
             toast.className = `toast ${type}`;
-            
+
             // Generate icon based on type
             let iconSvg = '';
             if (type === 'info') {
@@ -1038,7 +1160,7 @@
             } else if (type === 'error') {
                 iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>';
             }
-            
+
             toast.innerHTML = `
                 <div class="toast-icon">${iconSvg}</div>
                 <div class="toast-content">${message}</div>
@@ -1050,35 +1172,35 @@
                 </div>
                 <div class="toast-progress"></div>
             `;
-            
+
             toastContainer.appendChild(toast);
-            
+
             // Animate progress bar
             const progressBar = toast.querySelector('.toast-progress');
-            progressBar.style.animation = `shrink ${duration/1000}s linear forwards`;
+            progressBar.style.animation = `shrink ${duration / 1000}s linear forwards`;
             progressBar.style.transformOrigin = 'left';
             progressBar.style.transform = 'scaleX(1)';
-            
+
             // Auto-remove toast after duration
             const timeoutId = setTimeout(() => {
                 closeToast(toast);
             }, duration);
-            
+
             // Store timeout ID on the toast element
             toast.dataset.timeoutId = timeoutId;
-            
+
             return toast;
         }
-        
+
         function closeToast(toast) {
             // Clear the timeout to prevent duplicate removal attempts
             if (toast.dataset.timeoutId) {
                 clearTimeout(parseInt(toast.dataset.timeoutId));
             }
-            
+
             // Add slide-out animation
             toast.classList.add('slide-out');
-            
+
             // Remove toast after animation completes
             setTimeout(() => {
                 if (toast.parentNode) {
