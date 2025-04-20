@@ -1072,22 +1072,33 @@
 
         // Function to check if the login tip has been dismissed
         function isLoginTipDismissed() {
-            return document.cookie.split(';').some(cookie => {
-                return cookie.trim().startsWith('login_tip_dismissed=true');
-            });
+            try {
+                return localStorage.getItem('login_tip_dismissed') === 'true';
+            } catch (error) {
+                // Fallback if localStorage is blocked
+                console.warn('localStorage access failed:', error);
+                return false;
+            }
         }
 
-        // Function to set cookie when login tip is dismissed
+        // Function to set localStorage when login tip is dismissed
         function dismissLoginTip() {
-            // Set cookie to expire in 30 days
-            const expiryDate = new Date();
-            expiryDate.setDate(expiryDate.getDate() + 30);
-            document.cookie = `login_tip_dismissed=true; expires=${expiryDate.toUTCString()}; path=/`;
-            
-            // Hide the tip
-            const loginTip = document.getElementById('login-tip-overlay');
-            if (loginTip) {
-                loginTip.classList.remove('show');
+            try {
+                // Store the preference in localStorage
+                localStorage.setItem('login_tip_dismissed', 'true');
+                
+                // Hide the tip
+                const loginTip = document.getElementById('login-tip-overlay');
+                if (loginTip) {
+                    loginTip.classList.remove('show');
+                }
+            } catch (error) {
+                console.warn('localStorage write failed:', error);
+                // Still hide the tip even if localStorage fails
+                const loginTip = document.getElementById('login-tip-overlay');
+                if (loginTip) {
+                    loginTip.classList.remove('show');
+                }
             }
         }
 
