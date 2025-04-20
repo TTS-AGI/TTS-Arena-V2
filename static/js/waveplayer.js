@@ -100,6 +100,12 @@ class WavePlayer {
       this.togglePlayPause();
     });
     
+    // Add touch support for mobile
+    this.playButton.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      this.togglePlayPause();
+    });
+    
     // Wavesurfer events
     this.wavesurfer.on('ready', () => {
       this.hideLoading();
