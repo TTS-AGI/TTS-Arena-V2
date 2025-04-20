@@ -1677,6 +1677,17 @@
                     // Load audio in waveplayers
                     podcastWavePlayers.a.loadAudio(data.audio_a);
                     podcastWavePlayers.b.loadAudio(data.audio_b);
+                    
+                    // Force hide loading indicators after 5 seconds as a fallback
+                    setTimeout(() => {
+                        if (podcastWavePlayers.a && podcastWavePlayers.a.hideLoading) {
+                            podcastWavePlayers.a.hideLoading();
+                        }
+                        if (podcastWavePlayers.b && podcastWavePlayers.b.hideLoading) {
+                            podcastWavePlayers.b.hideLoading();
+                        }
+                        console.log('Forced hiding of podcast loading indicators (safety timeout - existing players)');
+                    }, 5000);
                 } else {
                     // Reset and reload for existing players
                     try {
@@ -1689,6 +1700,17 @@
                         
                         podcastWavePlayers.a.loadAudio(data.audio_a);
                         podcastWavePlayers.b.loadAudio(data.audio_b);
+                        
+                        // Force hide loading indicators after 5 seconds as a fallback
+                        setTimeout(() => {
+                            if (podcastWavePlayers.a && podcastWavePlayers.a.hideLoading) {
+                                podcastWavePlayers.a.hideLoading();
+                            }
+                            if (podcastWavePlayers.b && podcastWavePlayers.b.hideLoading) {
+                                podcastWavePlayers.b.hideLoading();
+                            }
+                            console.log('Forced hiding of podcast loading indicators (safety timeout - existing players)');
+                        }, 5000);
                     } catch (err) {
                         console.error('Error resetting podcast waveplayers:', err);
                         
@@ -1704,6 +1726,17 @@
                         
                         podcastWavePlayers.a.loadAudio(data.audio_a);
                         podcastWavePlayers.b.loadAudio(data.audio_b);
+
+                        // Force hide loading indicators after 5 seconds as a fallback
+                        setTimeout(() => {
+                            if (podcastWavePlayers.a && podcastWavePlayers.a.hideLoading) {
+                                podcastWavePlayers.a.hideLoading();
+                            }
+                            if (podcastWavePlayers.b && podcastWavePlayers.b.hideLoading) {
+                                podcastWavePlayers.b.hideLoading();
+                            }
+                            console.log('Forced hiding of podcast loading indicators (fallback case)');
+                        }, 5000);
                     }
                 }
                 

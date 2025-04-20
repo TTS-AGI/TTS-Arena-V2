@@ -95,6 +95,28 @@ class WavePlayer {
       <span>Loading...</span>
     `;
     
+    // Set up MutationObserver to detect when loading reaches 100%
+    const loadingTextElement = this.loadingIndicator.querySelector('span');
+    if (loadingTextElement) {
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.type === 'characterData' || mutation.type === 'childList') {
+            const text = loadingTextElement.textContent;
+            if (text && text.includes('100%')) {
+              // If we see "100%", hide the loading indicator after a short delay
+              setTimeout(() => this.hideLoading(), 300);
+            }
+          }
+        });
+      });
+      
+      observer.observe(loadingTextElement, { 
+        characterData: true, 
+        childList: true,
+        subtree: true
+      });
+    }
+    
     // Append elements
     controlsContainer.appendChild(this.playButton);
     controlsContainer.appendChild(this.timeDisplay);
@@ -116,6 +138,11 @@ class WavePlayer {
       interact: true,
       dragToSeek: true
     });
+    
+    // Force reset any loading indicators
+    if (this.loadingIndicator) {
+      this.loadingIndicator.style.display = 'none';
+    }
   }
   
   setupEvents() {
@@ -151,6 +178,28 @@ class WavePlayer {
       if (this.loadingIndicator && this.loadingIndicator.querySelector('span')) {
         this.loadingIndicator.querySelector('span').textContent = 'Loading...';
       }
+      
+      console.log('WavePlayer ready event fired');
+    });
+    
+    // Add specific handler for decode event (fired when audio is decoded)
+    this.wavesurfer.on('decode', () => {
+      // Also hide loading indicator after decode
+      this.hideLoading();
+      console.log('WavePlayer decode event fired');
+    });
+    
+    // Add specific handler for loading complete
+    this.wavesurfer.on('loading', (percent) => {
+      this.showLoading(percent);
+      
+      // If loading reaches 100%, make sure to hide the loader after a small delay
+      if (percent === 100) {
+        setTimeout(() => {
+          this.hideLoading();
+          console.log('WavePlayer loading 100% - force hiding loader');
+        }, 500);
+      }
     });
     
     this.wavesurfer.on('play', () => {
@@ -174,10 +223,6 @@ class WavePlayer {
     
     this.wavesurfer.on('seek', () => {
       this.updateTimeDisplay();
-    });
-    
-    this.wavesurfer.on('loading', (percent) => {
-      this.showLoading(percent);
     });
     
     this.wavesurfer.on('error', (err) => {
