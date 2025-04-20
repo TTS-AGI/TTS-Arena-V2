@@ -583,13 +583,11 @@
             <label for="tts-public">Public</label>
             <input type="radio" id="tts-personal" name="tts-view">
             <label for="tts-personal">Personal</label>
-            <input type="radio" id="tts-historical" name="tts-view">
-            <label for="tts-historical">Historical</label>
             <div class="slider"></div>
         </div>
     </div>
 
-    <!-- Historical timeline for TTS models -->
+    <!-- Historical timeline for TTS models - temporarily disabled -->
     <div id="tts-timeline-container" class="timeline-container" style="display: none;">
         <div class="timeline-header">
             <div class="timeline-title">
@@ -634,7 +632,8 @@
         {% endif %}
     </div>
     
-    <div class="historical-indicator" id="tts-historical-indicator">
+    <!-- Historical indicator - temporarily disabled -->
+    <div class="historical-indicator" id="tts-historical-indicator" style="display: none;">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"></circle>
             <polyline points="12 6 12 12 16 14"></polyline>
@@ -724,6 +723,7 @@
         {% endif %}
     </div>
     
+    <!-- Historical TTS leaderboard - temporarily disabled -->
     <div id="tts-historical-leaderboard" class="leaderboard-view" style="display: none;">
         <!-- This will be populated dynamically with JavaScript -->
         <div class="leaderboard-container">
@@ -751,13 +751,11 @@
             <label for="conversational-public">Public</label>
             <input type="radio" id="conversational-personal" name="conversational-view">
             <label for="conversational-personal">Personal</label>
-            <input type="radio" id="conversational-historical" name="conversational-view">
-            <label for="conversational-historical">Historical</label>
             <div class="slider"></div>
         </div>
     </div>
 
-    <!-- Historical timeline for Conversational models -->
+    <!-- Historical timeline for Conversational models - temporarily disabled -->
     <div id="conversational-timeline-container" class="timeline-container" style="display: none;">
         <div class="timeline-header">
             <div class="timeline-title">
@@ -802,7 +800,8 @@
         {% endif %}
     </div>
     
-    <div class="historical-indicator" id="conversational-historical-indicator">
+    <!-- Historical indicator - temporarily disabled -->
+    <div class="historical-indicator" id="conversational-historical-indicator" style="display: none;">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"></circle>
             <polyline points="12 6 12 12 16 14"></polyline>
@@ -892,6 +891,7 @@
         {% endif %}
     </div>
     
+    <!-- Historical Conversational leaderboard - temporarily disabled -->
     <div id="conversational-historical-leaderboard" class="leaderboard-view" style="display: none;">
         <!-- This will be populated dynamically with JavaScript -->
         <div class="leaderboard-container">
@@ -1048,11 +1048,13 @@
                 activeView.style.display = 'block';
                 activeView.classList.add('active');
                 
-                // Toggle timeline visibility
+                // Toggle timeline visibility - temporarily disabled
+                /* 
                 const timelineContainer = document.getElementById(`${tabId}-timeline-container`);
                 if (timelineContainer) {
                     timelineContainer.style.display = view === 'historical' ? 'block' : 'none';
                 }
+                */
             });
         });
         
@@ -1063,7 +1065,8 @@
             });
         }
         
-        // Historical data functionality
+        // Historical data functionality - temporarily disabled
+        /* 
         function setupHistoricalView(modelType) {
             const loadButton = document.getElementById(`${modelType}-load-historical`);
             const dateSelect = document.getElementById(`${modelType}-date-select`);
@@ -1174,6 +1177,7 @@
         // Setup historical view for both model types
         setupHistoricalView('tts');
         setupHistoricalView('conversational');
+        */
         
         // Final positioning after all DOM operations are complete
         setTimeout(positionSliders, 100);
