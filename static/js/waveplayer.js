@@ -138,8 +138,19 @@ class WavePlayer {
     
     // Wavesurfer events
     this.wavesurfer.on('ready', () => {
+      // Clear loading timeout
+      if (this.loadingTimeout) {
+        clearTimeout(this.loadingTimeout);
+      }
+      
+      // Explicitly ensure loading indicator is hidden
       this.hideLoading();
       this.updateTimeDisplay();
+      
+      // Force loading message to be reset
+      if (this.loadingIndicator && this.loadingIndicator.querySelector('span')) {
+        this.loadingIndicator.querySelector('span').textContent = 'Loading...';
+      }
     });
     
     this.wavesurfer.on('play', () => {
@@ -178,6 +189,12 @@ class WavePlayer {
   loadAudio(url) {
     this.showLoading();
     this.wavesurfer.load(url);
+    
+    // Safety timeout to ensure loading indicator gets hidden
+    // even if the 'ready' event doesn't fire properly
+    this.loadingTimeout = setTimeout(() => {
+      this.hideLoading();
+    }, 10000); // 10 seconds max loading time
   }
   
   play() {
@@ -217,7 +234,15 @@ class WavePlayer {
   }
   
   hideLoading() {
-    this.loadingIndicator.style.display = 'none';
+    if (this.loadingIndicator) {
+      this.loadingIndicator.style.display = 'none';
+      
+      // Reset loading text
+      const loadingText = this.loadingIndicator.querySelector('span');
+      if (loadingText) {
+        loadingText.textContent = 'Loading...';
+      }
+    }
   }
   
   formatTime(seconds) {

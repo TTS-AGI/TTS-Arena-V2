@@ -1679,11 +1679,32 @@
                     podcastWavePlayers.b.loadAudio(data.audio_b);
                 } else {
                     // Reset and reload for existing players
-                    podcastWavePlayers.a.wavesurfer.empty();
-                    podcastWavePlayers.b.wavesurfer.empty();
-                    
-                    podcastWavePlayers.a.loadAudio(data.audio_a);
-                    podcastWavePlayers.b.loadAudio(data.audio_b);
+                    try {
+                        podcastWavePlayers.a.wavesurfer.empty();
+                        podcastWavePlayers.b.wavesurfer.empty();
+                        
+                        // Make sure loading indicators are reset
+                        podcastWavePlayers.a.hideLoading();
+                        podcastWavePlayers.b.hideLoading();
+                        
+                        podcastWavePlayers.a.loadAudio(data.audio_a);
+                        podcastWavePlayers.b.loadAudio(data.audio_b);
+                    } catch (err) {
+                        console.error('Error resetting podcast waveplayers:', err);
+                        
+                        // Recreate the players if there was an error
+                        podcastWavePlayers.a = new WavePlayer(podcastWavePlayerA, {
+                            backend: 'MediaElement',
+                            mediaControls: false
+                        });
+                        podcastWavePlayers.b = new WavePlayer(podcastWavePlayerB, {
+                            backend: 'MediaElement',
+                            mediaControls: false
+                        });
+                        
+                        podcastWavePlayers.a.loadAudio(data.audio_a);
+                        podcastWavePlayers.b.loadAudio(data.audio_b);
+                    }
                 }
                 
                 // Setup automatic sequential playback
