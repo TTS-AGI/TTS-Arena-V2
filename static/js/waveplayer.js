@@ -87,7 +87,10 @@ class WavePlayer {
     // Initialize WaveSurfer
     this.wavesurfer = WaveSurfer.create({
       container: this.waveformContainer,
-      ...this.options
+      ...this.options,
+      // Add mobile touch support
+      interact: true,
+      dragToSeek: true
     });
   }
   
