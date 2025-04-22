@@ -54,6 +54,7 @@ from datetime import datetime, timedelta
 from flask_migrate import Migrate
 import requests
 import functools
+import time # Added for potential retries
 
 
 # Load environment variables
@@ -453,12 +454,12 @@ def submit_vote():
 
     data = request.json
     session_id = data.get("session_id")
-    chosen_model = data.get("chosen_model")  # "a" or "b"
+    chosen_model_key = data.get("chosen_model")  # "a" or "b"
 
     if not session_id or session_id not in tts_sessions:
         return jsonify({"error": "Invalid or expired session"}), 404
 
-    if not chosen_model or chosen_model not in ["a", "b"]:
+    if not chosen_model_key or chosen_model_key not in ["a", "b"]:
         return jsonify({"error": "Invalid chosen model"}), 400
 
     session_data = tts_sessions[session_id]
@@ -472,12 +473,18 @@ def submit_vote():
     if session_data["voted"]:
         return jsonify({"error": "Vote already submitted for this session"}), 400
 
-    # Get model IDs
+    # Get model IDs and audio paths
     chosen_id = (
-        session_data["model_a"] if chosen_model == "a" else session_data["model_b"]
+        session_data["model_a"] if chosen_model_key == "a" else session_data["model_b"]
     )
     rejected_id = (
-        session_data["model_b"] if chosen_model == "a" else session_data["model_a"]
+        session_data["model_b"] if chosen_model_key == "a" else session_data["model_a"]
+    )
+    chosen_audio_path = (
+        session_data["audio_a"] if chosen_model_key == "a" else session_data["audio_b"]
+    )
+    rejected_audio_path = (
+        session_data["audio_b"] if chosen_model_key == "a" else session_data["audio_a"]
     )
 
     # Record vote in database
@@ -489,28 +496,55 @@ def submit_vote():
     if error:
         return jsonify({"error": error}), 500
 
+    # --- Save preference data ---
+    try:
+        vote_uuid = str(uuid.uuid4())
+        vote_dir = os.path.join("./votes", vote_uuid)
+        os.makedirs(vote_dir, exist_ok=True)
+
+        # Copy audio files
+        shutil.copy(chosen_audio_path, os.path.join(vote_dir, "chosen.wav"))
+        shutil.copy(rejected_audio_path, os.path.join(vote_dir, "rejected.wav"))
+
+        # Create metadata
+        chosen_model_obj = Model.query.get(chosen_id)
+        rejected_model_obj = Model.query.get(rejected_id)
+        metadata = {
+            "text": session_data["text"],
+            "chosen_model": chosen_model_obj.name if chosen_model_obj else "Unknown",
+            "rejected_model": rejected_model_obj.name if rejected_model_obj else "Unknown",
+            "session_id": session_id,
+            "timestamp": datetime.utcnow().isoformat(),
+            "username": current_user.username if current_user.is_authenticated else None,
+            "model_type": "TTS"
+        }
+        with open(os.path.join(vote_dir, "metadata.json"), "w") as f:
+            json.dump(metadata, f, indent=2)
+
+    except Exception as e:
+        app.logger.error(f"Error saving preference data for vote {session_id}: {str(e)}")
+        # Continue even if saving preference data fails, vote is already recorded
+
     # Mark session as voted
     session_data["voted"] = True
 
-    # Return updated models
+    # Return updated models (use previously fetched objects)
     return jsonify(
         {
             "success": True,
-            "chosen_model": {"id": chosen_id, "name": Model.query.get(chosen_id).name},
+            "chosen_model": {"id": chosen_id, "name": chosen_model_obj.name if chosen_model_obj else "Unknown"},
             "rejected_model": {
                 "id": rejected_id,
-                "name": Model.query.get(rejected_id).name,
+                "name": rejected_model_obj.name if rejected_model_obj else "Unknown",
             },
             "names": {
                 "a": (
-                    Model.query.get(chosen_id).name
-                    if chosen_model == "a"
-                    else Model.query.get(rejected_id).name
+                    chosen_model_obj.name if chosen_model_key == "a" else rejected_model_obj.name
+                    if chosen_model_obj and rejected_model_obj else "Unknown"
                 ),
                 "b": (
-                    Model.query.get(rejected_id).name
-                    if chosen_model == "a"
-                    else Model.query.get(chosen_id).name
+                    rejected_model_obj.name if chosen_model_key == "a" else chosen_model_obj.name
+                    if chosen_model_obj and rejected_model_obj else "Unknown"
                 ),
             },
         }
@@ -675,12 +709,12 @@ def submit_podcast_vote():
 
     data = request.json
     session_id = data.get("session_id")
-    chosen_model = data.get("chosen_model")  # "a" or "b"
+    chosen_model_key = data.get("chosen_model")  # "a" or "b"
 
     if not session_id or session_id not in conversational_sessions:
         return jsonify({"error": "Invalid or expired session"}), 404
 
-    if not chosen_model or chosen_model not in ["a", "b"]:
+    if not chosen_model_key or chosen_model_key not in ["a", "b"]:
         return jsonify({"error": "Invalid chosen model"}), 400
 
     session_data = conversational_sessions[session_id]
@@ -694,12 +728,18 @@ def submit_podcast_vote():
     if session_data["voted"]:
         return jsonify({"error": "Vote already submitted for this session"}), 400
 
-    # Get model IDs
+    # Get model IDs and audio paths
     chosen_id = (
-        session_data["model_a"] if chosen_model == "a" else session_data["model_b"]
+        session_data["model_a"] if chosen_model_key == "a" else session_data["model_b"]
     )
     rejected_id = (
-        session_data["model_b"] if chosen_model == "a" else session_data["model_a"]
+        session_data["model_b"] if chosen_model_key == "a" else session_data["model_a"]
+    )
+    chosen_audio_path = (
+        session_data["audio_a"] if chosen_model_key == "a" else session_data["audio_b"]
+    )
+    rejected_audio_path = (
+        session_data["audio_b"] if chosen_model_key == "a" else session_data["audio_a"]
     )
 
     # Record vote in database
@@ -711,17 +751,46 @@ def submit_podcast_vote():
     if error:
         return jsonify({"error": error}), 500
 
+    # --- Save preference data ---\
+    try:
+        vote_uuid = str(uuid.uuid4())
+        vote_dir = os.path.join("./votes", vote_uuid)
+        os.makedirs(vote_dir, exist_ok=True)
+
+        # Copy audio files
+        shutil.copy(chosen_audio_path, os.path.join(vote_dir, "chosen.wav"))
+        shutil.copy(rejected_audio_path, os.path.join(vote_dir, "rejected.wav"))
+
+        # Create metadata
+        chosen_model_obj = Model.query.get(chosen_id)
+        rejected_model_obj = Model.query.get(rejected_id)
+        metadata = {
+            "script": session_data["script"], # Save the full script
+            "chosen_model": chosen_model_obj.name if chosen_model_obj else "Unknown",
+            "rejected_model": rejected_model_obj.name if rejected_model_obj else "Unknown",
+            "session_id": session_id,
+            "timestamp": datetime.utcnow().isoformat(),
+            "username": current_user.username if current_user.is_authenticated else None,
+            "model_type": "CONVERSATIONAL"
+        }
+        with open(os.path.join(vote_dir, "metadata.json"), "w") as f:\
+            json.dump(metadata, f, indent=2)
+
+    except Exception as e:
+        app.logger.error(f"Error saving preference data for conversational vote {session_id}: {str(e)}")
+        # Continue even if saving preference data fails, vote is already recorded
+
     # Mark session as voted
     session_data["voted"] = True
 
-    # Return updated models
+    # Return updated models (use previously fetched objects)
     return jsonify(
         {
             "success": True,
-            "chosen_model": {"id": chosen_id, "name": Model.query.get(chosen_id).name},
+            "chosen_model": {"id": chosen_id, "name": chosen_model_obj.name if chosen_model_obj else "Unknown"},
             "rejected_model": {
                 "id": rejected_id,
-                "name": Model.query.get(rejected_id).name,
+                "name": rejected_model_obj.name if rejected_model_obj else "Unknown",
             },
             "names": {
                 "a": Model.query.get(session_data["model_a"]).name,
@@ -753,61 +822,135 @@ def cleanup_conversational_session(session_id):
 # Schedule periodic cleanup
 def setup_cleanup():
     def cleanup_expired_sessions():
-        current_time = datetime.utcnow()
-        # Cleanup TTS sessions
-        expired_tts_sessions = [
-            sid
-            for sid, session in tts_sessions.items()
-            if current_time > session["expires_at"]
-        ]
-        for sid in expired_tts_sessions:
-            cleanup_session(sid)
+        with app.app_context(): # Ensure app context for logging
+            current_time = datetime.utcnow()
+            # Cleanup TTS sessions
+            expired_tts_sessions = [
+                sid
+                for sid, session_data in tts_sessions.items()
+                if current_time > session_data["expires_at"]
+            ]
+            for sid in expired_tts_sessions:
+                cleanup_session(sid)
 
-        # Cleanup conversational sessions
-        expired_conv_sessions = [
-            sid
-            for sid, session in conversational_sessions.items()
-            if current_time > session["expires_at"]
-        ]
-        for sid in expired_conv_sessions:
-            cleanup_conversational_session(sid)
+            # Cleanup conversational sessions
+            expired_conv_sessions = [
+                sid
+                for sid, session_data in conversational_sessions.items()
+                if current_time > session_data["expires_at"]
+            ]
+            for sid in expired_conv_sessions:
+                cleanup_conversational_session(sid)
+            app.logger.info(f"Cleaned up {len(expired_tts_sessions)} TTS and {len(expired_conv_sessions)} conversational sessions.")
+
 
     # Run cleanup every 15 minutes
-    from apscheduler.schedulers.background import BackgroundScheduler
-
     scheduler = BackgroundScheduler()
     scheduler.add_job(cleanup_expired_sessions, "interval", minutes=15)
     scheduler.start()
+    print("Cleanup scheduler started") # Use print for startup messages
 
 
-def setup_database_sync():
-    """Setup database synchronization with HF dataset for Spaces"""
+# Schedule periodic tasks (database sync and preference upload)
+def setup_periodic_tasks():
+    """Setup periodic database synchronization and preference data upload for Spaces"""
     if not IS_SPACES:
         return
 
-    import os.path
-
-    db_path = app.config["SQLALCHEMY_DATABASE_URI"].replace("sqlite:///", "instance/")
+    db_path = app.config["SQLALCHEMY_DATABASE_URI"].replace("sqlite:///", "") # Get relative path
+    preferences_repo_id = "TTS-AGI/arena-v2-preferences"
+    database_repo_id = "TTS-AGI/database-arena-v2"
+    votes_dir = "./votes"
 
     def sync_database():
-        try:
-            # Upload the database to HF dataset
-            api = HfApi(token=os.getenv("HF_TOKEN"))
-            api.upload_file(
-                path_or_fileobj=db_path,
-                path_in_repo="tts_arena.db",
-                repo_id="TTS-AGI/database-arena-v2",
-                repo_type="dataset",
-            )
-            print(f"Database uploaded to HF dataset at {datetime.utcnow()}")
-        except Exception as e:
-            print(f"Error uploading database to HF dataset: {str(e)}")
+        """Uploads the database to HF dataset"""
+        with app.app_context(): # Ensure app context for logging
+            try:
+                if not os.path.exists(db_path):
+                    app.logger.warning(f"Database file not found at {db_path}, skipping sync.")
+                    return
 
-    # Schedule periodic uploads
+                api = HfApi(token=os.getenv("HF_TOKEN"))
+                api.upload_file(
+                    path_or_fileobj=db_path,
+                    path_in_repo="tts_arena.db",
+                    repo_id=database_repo_id,
+                    repo_type="dataset",
+                )
+                app.logger.info(f"Database uploaded to {database_repo_id} at {datetime.utcnow()}")
+            except Exception as e:
+                app.logger.error(f"Error uploading database to {database_repo_id}: {str(e)}")
+
+    def sync_preferences_data():
+        """Zips and uploads preference data folders to HF dataset"""
+        with app.app_context(): # Ensure app context for logging
+            if not os.path.isdir(votes_dir):
+                # app.logger.info(f"Votes directory '{votes_dir}' not found, skipping preference sync.")
+                return # Don't log every 5 mins if dir doesn't exist yet
+
+            try:
+                api = HfApi(token=os.getenv("HF_TOKEN"))
+                vote_uuids = [d for d in os.listdir(votes_dir) if os.path.isdir(os.path.join(votes_dir, d))]
+
+                if not vote_uuids:
+                    # app.logger.info("No new preference data to upload.")
+                    return # Don't log every 5 mins if no new data
+
+                uploaded_count = 0
+                for vote_uuid in vote_uuids:
+                    dir_path = os.path.join(votes_dir, vote_uuid)
+                    zip_base_path = os.path.join(votes_dir, vote_uuid) # Name zip file same as folder
+                    zip_path = f"{zip_base_path}.zip"
+
+                    try:
+                        # Create zip archive
+                        shutil.make_archive(zip_base_path, 'zip', dir_path)
+                        app.logger.info(f"Created zip archive: {zip_path}")
+
+                        # Upload zip file
+                        api.upload_file(
+                            path_or_fileobj=zip_path,
+                            path_in_repo=f"{vote_uuid}.zip",
+                            repo_id=preferences_repo_id,
+                            repo_type="dataset",
+                            commit_message=f"Add preference data {vote_uuid}"
+                        )
+                        app.logger.info(f"Successfully uploaded {zip_path} to {preferences_repo_id}")
+                        uploaded_count += 1
+
+                        # Cleanup local files after successful upload
+                        try:
+                            os.remove(zip_path)
+                            shutil.rmtree(dir_path)
+                            app.logger.info(f"Cleaned up local files: {zip_path} and {dir_path}")
+                        except OSError as e:
+                            app.logger.error(f"Error cleaning up files for {vote_uuid}: {str(e)}")
+
+                    except Exception as upload_err:
+                        app.logger.error(f"Error processing or uploading preference data for {vote_uuid}: {str(upload_err)}")
+                        # Optionally remove zip if it exists but upload failed
+                        if os.path.exists(zip_path):
+                             try:
+                                 os.remove(zip_path)
+                             except OSError as e:
+                                 app.logger.error(f"Error removing zip file after failed upload {zip_path}: {str(e)}")
+                        # Keep the original folder for the next attempt
+
+                if uploaded_count > 0:
+                    app.logger.info(f"Finished preference data sync. Uploaded {uploaded_count} new entries.")
+
+            except Exception as e:
+                app.logger.error(f"General error during preference data sync: {str(e)}")
+
+
+    # Schedule periodic tasks
     scheduler = BackgroundScheduler()
-    scheduler.add_job(sync_database, "interval", minutes=5)
+    # Sync database less frequently if needed, e.g., every 15 minutes
+    scheduler.add_job(sync_database, "interval", minutes=15, id="sync_db_job")
+    # Sync preferences more frequently
+    scheduler.add_job(sync_preferences_data, "interval", minutes=5, id="sync_pref_job")
     scheduler.start()
-    print("Database sync scheduler started")
+    print("Periodic tasks scheduler started (DB sync and Preferences upload)") # Use print for startup
 
 
 @app.cli.command("init-db")
@@ -820,12 +963,31 @@ def init_db():
 
 if __name__ == "__main__":
     with app.app_context():
-        # Download database if it doesn't exist
-        setup_database_sync()
+        # Ensure ./instance and ./votes directories exist
+        os.makedirs("instance", exist_ok=True)
+        os.makedirs("./votes", exist_ok=True) # Create votes directory if it doesn't exist
+
+        # Download database if it doesn't exist (only on initial space start)
+        if IS_SPACES and not os.path.exists(app.config["SQLALCHEMY_DATABASE_URI"].replace("sqlite:///", "")):
+             try:
+                print("Database not found, downloading from HF dataset...")
+                hf_hub_download(
+                    repo_id="TTS-AGI/database-arena-v2",
+                    filename="tts_arena.db",
+                    repo_type="dataset",
+                    local_dir="instance", # download to instance/
+                    token=os.getenv("HF_TOKEN"),
+                )
+                print("Database downloaded successfully ✅")
+             except Exception as e:
+                 print(f"Error downloading database from HF dataset: {str(e)} ⚠️")
+
+
         db.create_all()  # Create tables if they don't exist
         insert_initial_models()
-        # Call setup_cleanup to start the background scheduler
+        # Setup background tasks
         setup_cleanup()
+        setup_periodic_tasks() # Renamed function call
 
     # Configure Flask to recognize HTTPS when behind a reverse proxy
     from werkzeug.middleware.proxy_fix import ProxyFix
@@ -837,15 +999,15 @@ if __name__ == "__main__":
 
     # Force Flask to prefer HTTPS for generated URLs
     app.config["PREFERRED_URL_SCHEME"] = "https"
-    
+
     from waitress import serve
-    
+
     # Configuration for 2 vCPUs:
     # - threads: typically 4-8 threads per CPU core is a good balance
     # - connection_limit: maximum concurrent connections
     # - channel_timeout: prevent hanging connections
     threads = 12  # 6 threads per vCPU is a good balance for mixed IO/CPU workloads
-    
+
     if IS_SPACES:
         serve(
             app,
@@ -859,11 +1021,11 @@ if __name__ == "__main__":
     else:
         print(f"Starting Waitress server with {threads} threads")
         serve(
-            app, 
-            host="0.0.0.0", 
+            app,
+            host="0.0.0.0",
             port=5000,
             threads=threads,
             connection_limit=100,
             channel_timeout=30,
-            url_scheme='https'
+            url_scheme='https' # Keep https for local dev if using proxy/tunnel
         )

@@ -5,6 +5,22 @@
 
 This is the source code for the new version of the TTS Arena. It is built on Flask, rather than Gradio (which was used in the previous version).
 
+## V2 Migration
+
+* Delete `TTS-AGI/TTS-Arena-V2` Space.
+* Rename `TTS-AGI/TTS-Arena` to `TTS-AGI/TTS-Arena-V2` (preserves likes and discussions).
+* Deploy Arena V2 to `TTS-AGI/TTS-Arena-V2`.
+* Rename `TTS-AGI/TTS-Arena-Legacy` to `TTS-AGI/TTS-Arena`.
+
+Result:
+
+* `TTS-AGI/TTS-Arena` is the read-only legacy leaderboard.
+* `TTS-AGI/TTS-Arena-V2` is the new Arena.
+
+Resource groups:
+
+* Remove `TTS-AGI/TTS-Arena-V2` and `TTS-AGI/TTS-Arena-Legacy` from resource groups to make them public.
+
 ## Development
 
 ```bash
