@@ -518,7 +518,9 @@ def submit_vote():
         metadata = {
             "text": session_data["text"],
             "chosen_model": chosen_model_obj.name if chosen_model_obj else "Unknown",
+            "chosen_model_id": chosen_model_obj.id if chosen_model_obj else "Unknown",
             "rejected_model": rejected_model_obj.name if rejected_model_obj else "Unknown",
+            "rejected_model_id": rejected_model_obj.id if rejected_model_obj else "Unknown",
             "session_id": session_id,
             "timestamp": datetime.utcnow().isoformat(),
             "username": current_user.username if current_user.is_authenticated else None,
@@ -773,13 +775,15 @@ def submit_podcast_vote():
         metadata = {
             "script": session_data["script"], # Save the full script
             "chosen_model": chosen_model_obj.name if chosen_model_obj else "Unknown",
+            "chosen_model_id": chosen_model_obj.id if chosen_model_obj else "Unknown",
             "rejected_model": rejected_model_obj.name if rejected_model_obj else "Unknown",
+            "rejected_model_id": rejected_model_obj.id if rejected_model_obj else "Unknown",
             "session_id": session_id,
             "timestamp": datetime.utcnow().isoformat(),
             "username": current_user.username if current_user.is_authenticated else None,
             "model_type": "CONVERSATIONAL"
         }
-        with open(os.path.join(vote_dir, "metadata.json"), "w") as f:\
+        with open(os.path.join(vote_dir, "metadata.json"), "w") as f:
             json.dump(metadata, f, indent=2)
 
     except Exception as e:
