@@ -14,6 +14,11 @@ if [ "$FLASK_ENV" = "production" ] || [ "$IS_SPACES" = "True" ]; then
         --keepalive 5 \
         --max-requests 1000 \
         --max-requests-jitter 50 \
+        --log-level info \
+        --access-logfile - \
+        --error-logfile - \
+        --capture-output \
+        --forwarded-allow-ips="*" \
         --preload
 else
     echo "Starting TTS Arena in development mode..."

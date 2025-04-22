@@ -136,43 +136,51 @@ def before_request():
     if app.config["TURNSTILE_ENABLED"]:
         # Exclude verification routes
         excluded_routes = ["verify_turnstile", "turnstile_page", "static"]
-        if request.endpoint not in excluded_routes:
-            # Check if user is verified
-            if not session.get("turnstile_verified"):
-                # Save original URL for redirect after verification
+        excluded_paths = ["/turnstile", "/verify-turnstile", "/static"]
+        
+        # Skip verification for excluded routes or paths
+        if (request.endpoint in excluded_routes or 
+            any(request.path.startswith(path) for path in excluded_paths)):
+            return None
+            
+        # Check if user is verified
+        if not session.get("turnstile_verified"):
+            # Save original URL for redirect after verification
+            redirect_url = request.url
+            # Force HTTPS in HuggingFace Spaces
+            if IS_SPACES and redirect_url.startswith("http://"):
+                redirect_url = redirect_url.replace("http://", "https://", 1)
+
+            # If it's an API request, return a JSON response
+            if request.path.startswith("/api/"):
+                return jsonify({"error": "Turnstile verification required"}), 403
+            # For regular requests, redirect to verification page
+            return redirect(url_for("turnstile_page", redirect_url=redirect_url))
+        else:
+            # Check if verification has expired (default: 24 hours)
+            verification_timeout = (
+                int(os.getenv("TURNSTILE_TIMEOUT_HOURS", "24")) * 3600
+            )  # Convert hours to seconds
+            verified_at = session.get("turnstile_verified_at", 0)
+            current_time = datetime.utcnow().timestamp()
+
+            if current_time - verified_at > verification_timeout:
+                # Verification expired, clear status and redirect to verification page
+                session.pop("turnstile_verified", None)
+                session.pop("turnstile_verified_at", None)
+
                 redirect_url = request.url
                 # Force HTTPS in HuggingFace Spaces
                 if IS_SPACES and redirect_url.startswith("http://"):
                     redirect_url = redirect_url.replace("http://", "https://", 1)
 
-                # If it's an API request, return a JSON response
                 if request.path.startswith("/api/"):
-                    return jsonify({"error": "Turnstile verification required"}), 403
-                # For regular requests, redirect to verification page
-                return redirect(url_for("turnstile_page", redirect_url=redirect_url))
-            else:
-                # Check if verification has expired (default: 24 hours)
-                verification_timeout = (
-                    int(os.getenv("TURNSTILE_TIMEOUT_HOURS", "24")) * 3600
-                )  # Convert hours to seconds
-                verified_at = session.get("turnstile_verified_at", 0)
-                current_time = datetime.utcnow().timestamp()
-
-                if current_time - verified_at > verification_timeout:
-                    # Verification expired, clear status and redirect to verification page
-                    session.pop("turnstile_verified", None)
-                    session.pop("turnstile_verified_at", None)
-
-                    redirect_url = request.url
-                    # Force HTTPS in HuggingFace Spaces
-                    if IS_SPACES and redirect_url.startswith("http://"):
-                        redirect_url = redirect_url.replace("http://", "https://", 1)
-
-                    if request.path.startswith("/api/"):
-                        return jsonify({"error": "Turnstile verification expired"}), 403
-                    return redirect(
-                        url_for("turnstile_page", redirect_url=redirect_url)
-                    )
+                    return jsonify({"error": "Turnstile verification expired"}), 403
+                return redirect(
+                    url_for("turnstile_page", redirect_url=redirect_url)
+                )
+                
+    return None
 
 
 @app.route("/turnstile", methods=["GET"])
@@ -219,7 +227,13 @@ def verify_turnstile():
     }
 
     try:
-        response = requests.post(app.config["TURNSTILE_VERIFY_URL"], data=data)
+        # Use a session with a timeout to prevent hanging
+        verify_session = requests.Session()
+        response = verify_session.post(
+            app.config["TURNSTILE_VERIFY_URL"], 
+            data=data, 
+            timeout=5.0  # 5 second timeout
+        )
         result = response.json()
 
         if result.get("success"):
@@ -248,6 +262,12 @@ def verify_turnstile():
             # Otherwise redirect back to turnstile page
             return redirect(url_for("turnstile_page", redirect_url=redirect_url))
 
+    except requests.exceptions.Timeout:
+        app.logger.error("Turnstile verification timed out")
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return jsonify({"success": False, "error": "Verification request timed out"}), 504
+        return redirect(url_for("turnstile_page", redirect_url=redirect_url))
+        
     except Exception as e:
         app.logger.error(f"Turnstile verification error: {str(e)}")
 
