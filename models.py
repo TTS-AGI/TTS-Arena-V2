@@ -469,6 +469,13 @@ def insert_initial_models():
             is_open=False,
             model_url="https://play.ht/",
         ),
+        Model(
+            id="dia-1.6b",
+            name="Dia 1.6B",
+            model_type=ModelType.CONVERSATIONAL,
+            is_open=True,
+            model_url="https://huggingface.co/nari-labs/Dia-1.6B",
+        ),
     ]
 
     all_models = tts_models + conversational_models
