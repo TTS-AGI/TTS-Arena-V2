@@ -38,6 +38,7 @@ from flask import (
     abort,
 )
 from flask_login import LoginManager, current_user
+from flask_session import Session
 from models import *
 from auth import auth, init_oauth
 import os
@@ -77,6 +78,9 @@ app.config["SESSION_TYPE"] = "filesystem"
 app.config["SESSION_FILE_DIR"] = os.path.join(tempfile.gettempdir(), "tts_arena_sessions")
 app.config["SESSION_KEY_PREFIX"] = "tts_arena:"
 os.makedirs(app.config["SESSION_FILE_DIR"], exist_ok=True)
+
+# Initialize Flask-Session
+session_extension = Session(app)
 
 # Force HTTPS when running in HuggingFace Spaces
 if IS_SPACES:
