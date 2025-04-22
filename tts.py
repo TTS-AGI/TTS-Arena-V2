@@ -139,7 +139,7 @@ def predict_dia(script):
             if line:
                 if line.startswith(b"data: ") and not line.startswith(b"data: null"):
                     audio_data = line[6:]
-                    return json.loads(audio_data)[0]["url"]
+                    return requests.get(json.loads(audio_data)[0]["url"]).content
 
 
 
