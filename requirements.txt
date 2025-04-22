@@ -9,7 +9,6 @@ flask-limiter
 apscheduler
 flask-migrate
 gunicorn
-gevent
-flask-session
+waitress
 fal-client
 git+https://github.com/playht/pyht

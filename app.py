@@ -38,7 +38,6 @@ from flask import (
     abort,
 )
 from flask_login import LoginManager, current_user
-from flask_session import Session
 from models import *
 from auth import auth, init_oauth
 import os
@@ -72,15 +71,6 @@ app.config["SESSION_COOKIE_SAMESITE"] = (
     "None" if IS_SPACES else "Lax"
 )  # HF Spaces uses iframes to load the app, so we need to set SAMESITE to None
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)  # Set to desired duration
-
-# Session configuration for multi-worker Gunicorn setup
-app.config["SESSION_TYPE"] = "filesystem"
-app.config["SESSION_FILE_DIR"] = os.path.join(tempfile.gettempdir(), "tts_arena_sessions")
-app.config["SESSION_KEY_PREFIX"] = "tts_arena:"
-os.makedirs(app.config["SESSION_FILE_DIR"], exist_ok=True)
-
-# Initialize Flask-Session
-session_extension = Session(app)
 
 # Force HTTPS when running in HuggingFace Spaces
 if IS_SPACES:
@@ -146,51 +136,43 @@ def before_request():
     if app.config["TURNSTILE_ENABLED"]:
         # Exclude verification routes
         excluded_routes = ["verify_turnstile", "turnstile_page", "static"]
-        excluded_paths = ["/turnstile", "/verify-turnstile", "/static"]
-        
-        # Skip verification for excluded routes or paths
-        if (request.endpoint in excluded_routes or 
-            any(request.path.startswith(path) for path in excluded_paths)):
-            return None
-            
-        # Check if user is verified
-        if not session.get("turnstile_verified"):
-            # Save original URL for redirect after verification
-            redirect_url = request.url
-            # Force HTTPS in HuggingFace Spaces
-            if IS_SPACES and redirect_url.startswith("http://"):
-                redirect_url = redirect_url.replace("http://", "https://", 1)
-
-            # If it's an API request, return a JSON response
-            if request.path.startswith("/api/"):
-                return jsonify({"error": "Turnstile verification required"}), 403
-            # For regular requests, redirect to verification page
-            return redirect(url_for("turnstile_page", redirect_url=redirect_url))
-        else:
-            # Check if verification has expired (default: 24 hours)
-            verification_timeout = (
-                int(os.getenv("TURNSTILE_TIMEOUT_HOURS", "24")) * 3600
-            )  # Convert hours to seconds
-            verified_at = session.get("turnstile_verified_at", 0)
-            current_time = datetime.utcnow().timestamp()
-
-            if current_time - verified_at > verification_timeout:
-                # Verification expired, clear status and redirect to verification page
-                session.pop("turnstile_verified", None)
-                session.pop("turnstile_verified_at", None)
-
+        if request.endpoint not in excluded_routes:
+            # Check if user is verified
+            if not session.get("turnstile_verified"):
+                # Save original URL for redirect after verification
                 redirect_url = request.url
                 # Force HTTPS in HuggingFace Spaces
                 if IS_SPACES and redirect_url.startswith("http://"):
                     redirect_url = redirect_url.replace("http://", "https://", 1)
 
+                # If it's an API request, return a JSON response
                 if request.path.startswith("/api/"):
-                    return jsonify({"error": "Turnstile verification expired"}), 403
-                return redirect(
-                    url_for("turnstile_page", redirect_url=redirect_url)
-                )
-                
-    return None
+                    return jsonify({"error": "Turnstile verification required"}), 403
+                # For regular requests, redirect to verification page
+                return redirect(url_for("turnstile_page", redirect_url=redirect_url))
+            else:
+                # Check if verification has expired (default: 24 hours)
+                verification_timeout = (
+                    int(os.getenv("TURNSTILE_TIMEOUT_HOURS", "24")) * 3600
+                )  # Convert hours to seconds
+                verified_at = session.get("turnstile_verified_at", 0)
+                current_time = datetime.utcnow().timestamp()
+
+                if current_time - verified_at > verification_timeout:
+                    # Verification expired, clear status and redirect to verification page
+                    session.pop("turnstile_verified", None)
+                    session.pop("turnstile_verified_at", None)
+
+                    redirect_url = request.url
+                    # Force HTTPS in HuggingFace Spaces
+                    if IS_SPACES and redirect_url.startswith("http://"):
+                        redirect_url = redirect_url.replace("http://", "https://", 1)
+
+                    if request.path.startswith("/api/"):
+                        return jsonify({"error": "Turnstile verification expired"}), 403
+                    return redirect(
+                        url_for("turnstile_page", redirect_url=redirect_url)
+                    )
 
 
 @app.route("/turnstile", methods=["GET"])
@@ -237,13 +219,7 @@ def verify_turnstile():
     }
 
     try:
-        # Use a session with a timeout to prevent hanging
-        verify_session = requests.Session()
-        response = verify_session.post(
-            app.config["TURNSTILE_VERIFY_URL"], 
-            data=data, 
-            timeout=5.0  # 5 second timeout
-        )
+        response = requests.post(app.config["TURNSTILE_VERIFY_URL"], data=data)
         result = response.json()
 
         if result.get("success"):
@@ -272,12 +248,6 @@ def verify_turnstile():
             # Otherwise redirect back to turnstile page
             return redirect(url_for("turnstile_page", redirect_url=redirect_url))
 
-    except requests.exceptions.Timeout:
-        app.logger.error("Turnstile verification timed out")
-        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-            return jsonify({"success": False, "error": "Verification request timed out"}), 504
-        return redirect(url_for("turnstile_page", redirect_url=redirect_url))
-        
     except Exception as e:
         app.logger.error(f"Turnstile verification error: {str(e)}")
 
@@ -851,7 +821,6 @@ def init_db():
 if __name__ == "__main__":
     with app.app_context():
         # Download database if it doesn't exist
-
         setup_database_sync()
         db.create_all()  # Create tables if they don't exist
         insert_initial_models()
@@ -869,38 +838,32 @@ if __name__ == "__main__":
     # Force Flask to prefer HTTPS for generated URLs
     app.config["PREFERRED_URL_SCHEME"] = "https"
     
+    from waitress import serve
+    
+    # Configuration for 2 vCPUs:
+    # - threads: typically 4-8 threads per CPU core is a good balance
+    # - connection_limit: maximum concurrent connections
+    # - channel_timeout: prevent hanging connections
+    threads = 12  # 6 threads per vCPU is a good balance for mixed IO/CPU workloads
+    
     if IS_SPACES:
-        # Use gunicorn for production with optimized settings for 2 vCPU
-        # Workers = (2 * CPU cores) + 1
-        # Each worker consumes ~50MB memory
-        import gunicorn.app.base
-        
-        class StandaloneApplication(gunicorn.app.base.BaseApplication):
-            def __init__(self, app, options=None):
-                self.options = options or {}
-                self.application = app
-                super().__init__()
-
-            def load_config(self):
-                for key, value in self.options.items():
-                    self.cfg.set(key.lower(), value)
-
-            def load(self):
-                return self.application
-        
-        options = {
-            'bind': f"0.0.0.0:{int(os.environ.get('PORT', 7860))}",
-            'workers': 5,  # (2 * 2) + 1 for 2 vCPU
-            'threads': 2,  # 2 threads per worker
-            'worker_class': 'gevent',
-            'worker_connections': 1000,
-            'timeout': 120,
-            'keepalive': 5,
-            'max_requests': 1000,
-            'max_requests_jitter': 50,
-            'preload_app': True,
-        }
-        
-        StandaloneApplication(app, options).run()
+        serve(
+            app,
+            host="0.0.0.0",
+            port=int(os.environ.get("PORT", 7860)),
+            threads=threads,
+            connection_limit=100,
+            channel_timeout=30,
+            url_scheme='https'
+        )
     else:
-        app.run(debug=True, ssl_context="adhoc")
+        print(f"Starting Waitress server with {threads} threads")
+        serve(
+            app, 
+            host="0.0.0.0", 
+            port=5000,
+            threads=threads,
+            connection_limit=100,
+            channel_timeout=30,
+            url_scheme='https'
+        )
