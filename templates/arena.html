@@ -1626,6 +1626,12 @@
                 btn.querySelector('.vote-loader').style.display = 'none';
             });
             
+            // Clear model name displays
+            const modelNameDisplays = podcastPlayerContainer.querySelectorAll('.model-name-display');
+            modelNameDisplays.forEach(display => {
+                display.textContent = '';
+            });
+
             podcastVoteResults.style.display = 'none';
             podcastNextRoundContainer.style.display = 'none';
             
@@ -1852,6 +1858,12 @@
                 btn.disabled = true;
                 btn.classList.remove('selected');
                 btn.querySelector('.vote-loader').style.display = 'none';
+            });
+            
+            // Clear model name displays
+            const modelNameDisplays = podcastPlayerContainer.querySelectorAll('.model-name-display');
+            modelNameDisplays.forEach(display => {
+                display.textContent = '';
             });
             
             // Stop any playing audio
