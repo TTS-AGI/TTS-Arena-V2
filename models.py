@@ -425,6 +425,13 @@ def insert_initial_models():
             model_url="https://cartesia.ai/",
         ),
         Model(
+            id="spark-tts",
+            name="Spark TTS",
+            model_type=ModelType.TTS,
+            is_open=False,
+            model_url="https://github.com/SparkAudio/Spark-TTS",
+        ),
+        Model(
             id="playht-2.0",
             name="PlayHT 2.0",
             model_type=ModelType.TTS,

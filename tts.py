@@ -17,8 +17,10 @@ load_dotenv()
 
 ZEROGPU_TOKENS = os.getenv("ZEROGPU_TOKENS", "").split(",")
 
+
 def get_zerogpu_token():
     return random.choice(ZEROGPU_TOKENS)
+
 
 model_mapping = {
     "eleven-multilingual-v2": {
@@ -37,12 +39,34 @@ model_mapping = {
         "provider": "cartesia",
         "model": "sonic-2",
     },
-    "playht-2.0": {"provider": "playht", "model": "PlayHT2.0"},
-    "styletts2": {"provider": "styletts", "model": "styletts2"},
-    "kokoro-v1": {"provider": "kokoro", "model": "kokoro_v1"},
-    "cosyvoice-2.0": {"provider": "cosyvoice", "model": "cosyvoice_2_0"},
-    "papla-p1": {"provider": "papla", "model": "papla_p1"},
-    "hume-octave": {"provider": "hume", "model": "octave"},
+    "spark-tts": {
+        "provider": "spark",
+        "model": "spark-tts",
+    },
+    "playht-2.0": {
+        "provider": "playht",
+        "model": "PlayHT2.0",
+    },
+    "styletts2": {
+        "provider": "styletts",
+        "model": "styletts2",
+    },
+    "kokoro-v1": {
+        "provider": "kokoro",
+        "model": "kokoro_v1",
+    },
+    "cosyvoice-2.0": {
+        "provider": "cosyvoice",
+        "model": "cosyvoice_2_0",
+    },
+    "papla-p1": {
+        "provider": "papla",
+        "model": "papla_p1",
+    },
+    "hume-octave": {
+        "provider": "hume",
+        "model": "octave",
+    },
 }
 
 url = "https://tts-agi-tts-router-v2.hf.space/tts"
@@ -111,6 +135,7 @@ def predict_playdialog(script):
     # Combine all chunks into a single audio file
     return b"".join(audio_chunks)
 
+
 def predict_dia(script):
     # Convert script to the required format for Dia
     if isinstance(script, list):
@@ -131,19 +156,19 @@ def predict_dia(script):
         # "Content-Type": "application/json",
         "Authorization": f"Bearer {get_zerogpu_token()}"
     }
-    
+
     response = requests.post(
         "https://mrfakename-dia-1-6b.hf.space/gradio_api/call/generate_dialogue",
         headers=headers,
         json={"data": [text]},
     )
-    
+
     # Extract the event ID from the response
     event_id = response.json()["event_id"]
-    
+
     # Make a streaming request to get the generated dialogue
     stream_url = f"https://mrfakename-dia-1-6b.hf.space/gradio_api/call/generate_dialogue/{event_id}"
-    
+
     # Use a streaming request to get the audio data
     with requests.get(stream_url, headers=headers, stream=True) as stream_response:
         # Process the streaming response
@@ -152,7 +177,6 @@ def predict_dia(script):
                 if line.startswith(b"data: ") and not line.startswith(b"data: null"):
                     audio_data = line[6:]
                     return requests.get(json.loads(audio_data)[0]["url"]).content
-
 
 
 def predict_tts(text, model):
@@ -197,7 +221,14 @@ def predict_tts(text, model):
 
 
 if __name__ == "__main__":
-    print(predict_dia([{"text": "Hello, how are you?", "speaker_id": 0}, {"text": "I'm great, thank you!", "speaker_id": 1}]))
+    print(
+        predict_dia(
+            [
+                {"text": "Hello, how are you?", "speaker_id": 0},
+                {"text": "I'm great, thank you!", "speaker_id": 1},
+            ]
+        )
+    )
     # print("Predicting PlayDialog")
     # print(
     #     predict_playdialog(
