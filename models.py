@@ -404,6 +404,27 @@ def insert_initial_models():
             model_url="https://elevenlabs.io/",
         ),
         Model(
+            id="eleven-turbo-v2.5",
+            name="Eleven Turbo v2.5",
+            model_type=ModelType.TTS,
+            is_open=False,
+            model_url="https://elevenlabs.io/",
+        ),
+        Model(
+            id="eleven-flash-v2.5",
+            name="Eleven Flash v2.5",
+            model_type=ModelType.TTS,
+            is_open=False,
+            model_url="https://elevenlabs.io/",
+        ),
+        Model(
+            id="cartesia-sonic-2",
+            name="Cartesia Sonic 2",
+            model_type=ModelType.TTS,
+            is_open=False,
+            model_url="https://cartesia.ai/",
+        ),
+        Model(
             id="playht-2.0",
             name="PlayHT 2.0",
             model_type=ModelType.TTS,

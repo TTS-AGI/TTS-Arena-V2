@@ -25,6 +25,18 @@ model_mapping = {
         "provider": "elevenlabs",
         "model": "eleven_multilingual_v2",
     },
+    "eleven-turbo-v2.5": {
+        "provider": "elevenlabs",
+        "model": "eleven_turbo_v2_5",
+    },
+    "eleven-flash-v2.5": {
+        "provider": "elevenlabs",
+        "model": "eleven_flash_v2_5",
+    },
+    "cartesia-sonic-2": {
+        "provider": "cartesia",
+        "model": "sonic-2",
+    },
     "playht-2.0": {"provider": "playht", "model": "PlayHT2.0"},
     "styletts2": {"provider": "styletts", "model": "styletts2"},
     "kokoro-v1": {"provider": "kokoro", "model": "kokoro_v1"},
