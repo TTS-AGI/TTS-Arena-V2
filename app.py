@@ -72,6 +72,12 @@ app.config["SESSION_COOKIE_SAMESITE"] = (
 )  # HF Spaces uses iframes to load the app, so we need to set SAMESITE to None
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)  # Set to desired duration
 
+# Session configuration for multi-worker Gunicorn setup
+app.config["SESSION_TYPE"] = "filesystem"
+app.config["SESSION_FILE_DIR"] = os.path.join(tempfile.gettempdir(), "tts_arena_sessions")
+app.config["SESSION_KEY_PREFIX"] = "tts_arena:"
+os.makedirs(app.config["SESSION_FILE_DIR"], exist_ok=True)
+
 # Force HTTPS when running in HuggingFace Spaces
 if IS_SPACES:
     app.config["PREFERRED_URL_SCHEME"] = "https"

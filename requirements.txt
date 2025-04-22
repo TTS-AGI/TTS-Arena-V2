@@ -10,5 +10,6 @@ apscheduler
 flask-migrate
 gunicorn
 gevent
+flask-session
 fal-client
 git+https://github.com/playht/pyht
