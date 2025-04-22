@@ -39,7 +39,8 @@ from flask import (
 )
 from flask_login import LoginManager, current_user
 from models import *
-from auth import auth, init_oauth
+from auth import auth, init_oauth, is_admin
+from admin import admin
 import os
 from dotenv import load_dotenv
 from flask_limiter import Limiter
@@ -111,12 +112,16 @@ TEMP_AUDIO_DIR = os.path.join(tempfile.gettempdir(), "tts_arena_audio")
 os.makedirs(TEMP_AUDIO_DIR, exist_ok=True)
 
 # Store active TTS sessions
-tts_sessions = {}
+app.tts_sessions = {}
+tts_sessions = app.tts_sessions
+
 # Store active conversational sessions
-conversational_sessions = {}
+app.conversational_sessions = {}
+conversational_sessions = app.conversational_sessions
 
 # Register blueprints
 app.register_blueprint(auth, url_prefix="/auth")
+app.register_blueprint(admin)
 
 
 @login_manager.user_loader
@@ -127,6 +132,7 @@ def load_user(user_id):
 @app.before_request
 def before_request():
     g.user = current_user
+    g.is_admin = is_admin(current_user)
 
     # Ensure HTTPS for HuggingFace Spaces environment
     if IS_SPACES and request.headers.get("X-Forwarded-Proto") == "http":
@@ -389,7 +395,7 @@ def generate_tts():
 
         # Create session
         session_id = str(uuid.uuid4())
-        tts_sessions[session_id] = {
+        app.tts_sessions[session_id] = {
             "model_a": model_ids[0],
             "model_b": model_ids[1],
             "audio_a": audio_files[0],
@@ -421,10 +427,10 @@ def get_audio(session_id, model_key):
     if app.config["TURNSTILE_ENABLED"] and not session.get("turnstile_verified"):
         return jsonify({"error": "Turnstile verification required"}), 403
 
-    if session_id not in tts_sessions:
+    if session_id not in app.tts_sessions:
         return jsonify({"error": "Invalid or expired session"}), 404
 
-    session_data = tts_sessions[session_id]
+    session_data = app.tts_sessions[session_id]
 
     # Check if session expired
     if datetime.utcnow() > session_data["expires_at"]:
@@ -456,13 +462,13 @@ def submit_vote():
     session_id = data.get("session_id")
     chosen_model_key = data.get("chosen_model")  # "a" or "b"
 
-    if not session_id or session_id not in tts_sessions:
+    if not session_id or session_id not in app.tts_sessions:
         return jsonify({"error": "Invalid or expired session"}), 404
 
     if not chosen_model_key or chosen_model_key not in ["a", "b"]:
         return jsonify({"error": "Invalid chosen model"}), 400
 
-    session_data = tts_sessions[session_id]
+    session_data = app.tts_sessions[session_id]
 
     # Check if session expired
     if datetime.utcnow() > session_data["expires_at"]:
@@ -553,8 +559,8 @@ def submit_vote():
 
 def cleanup_session(session_id):
     """Remove session and its audio files"""
-    if session_id in tts_sessions:
-        session = tts_sessions[session_id]
+    if session_id in app.tts_sessions:
+        session = app.tts_sessions[session_id]
 
         # Remove audio files
         for audio_file in [session["audio_a"], session["audio_b"]]:
@@ -565,7 +571,7 @@ def cleanup_session(session_id):
                     app.logger.error(f"Error removing audio file: {str(e)}")
 
         # Remove session
-        del tts_sessions[session_id]
+        del app.tts_sessions[session_id]
 
 
 @app.route("/api/conversational/generate", methods=["POST"])
@@ -643,7 +649,7 @@ def generate_podcast():
         # Create session
         session_id = str(uuid.uuid4())
         script_text = " ".join([line["text"] for line in script])
-        conversational_sessions[session_id] = {
+        app.conversational_sessions[session_id] = {
             "model_a": model_ids[0],
             "model_b": model_ids[1],
             "audio_a": audio_files[0],
@@ -676,10 +682,10 @@ def get_podcast_audio(session_id, model_key):
     if app.config["TURNSTILE_ENABLED"] and not session.get("turnstile_verified"):
         return jsonify({"error": "Turnstile verification required"}), 403
 
-    if session_id not in conversational_sessions:
+    if session_id not in app.conversational_sessions:
         return jsonify({"error": "Invalid or expired session"}), 404
 
-    session_data = conversational_sessions[session_id]
+    session_data = app.conversational_sessions[session_id]
 
     # Check if session expired
     if datetime.utcnow() > session_data["expires_at"]:
@@ -711,13 +717,13 @@ def submit_podcast_vote():
     session_id = data.get("session_id")
     chosen_model_key = data.get("chosen_model")  # "a" or "b"
 
-    if not session_id or session_id not in conversational_sessions:
+    if not session_id or session_id not in app.conversational_sessions:
         return jsonify({"error": "Invalid or expired session"}), 404
 
     if not chosen_model_key or chosen_model_key not in ["a", "b"]:
         return jsonify({"error": "Invalid chosen model"}), 400
 
-    session_data = conversational_sessions[session_id]
+    session_data = app.conversational_sessions[session_id]
 
     # Check if session expired
     if datetime.utcnow() > session_data["expires_at"]:
@@ -802,8 +808,8 @@ def submit_podcast_vote():
 
 def cleanup_conversational_session(session_id):
     """Remove conversational session and its audio files"""
-    if session_id in conversational_sessions:
-        session = conversational_sessions[session_id]
+    if session_id in app.conversational_sessions:
+        session = app.conversational_sessions[session_id]
 
         # Remove audio files
         for audio_file in [session["audio_a"], session["audio_b"]]:
@@ -816,7 +822,7 @@ def cleanup_conversational_session(session_id):
                     )
 
         # Remove session
-        del conversational_sessions[session_id]
+        del app.conversational_sessions[session_id]
 
 
 # Schedule periodic cleanup
@@ -827,7 +833,7 @@ def setup_cleanup():
             # Cleanup TTS sessions
             expired_tts_sessions = [
                 sid
-                for sid, session_data in tts_sessions.items()
+                for sid, session_data in app.tts_sessions.items()
                 if current_time > session_data["expires_at"]
             ]
             for sid in expired_tts_sessions:
@@ -836,7 +842,7 @@ def setup_cleanup():
             # Cleanup conversational sessions
             expired_conv_sessions = [
                 sid
-                for sid, session_data in conversational_sessions.items()
+                for sid, session_data in app.conversational_sessions.items()
                 if current_time > session_data["expires_at"]
             ]
             for sid in expired_conv_sessions:

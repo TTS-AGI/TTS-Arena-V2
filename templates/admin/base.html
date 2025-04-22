@@ -1,0 +1,502 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Panel - TTS Arena{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.bundle.min.js"></script>
+<style>
+    .admin-container {
+        width: 100%;
+    }
+    
+    /* Horizontal navigation tabs */
+    .admin-nav {
+        display: flex;
+        overflow-x: auto;
+        white-space: nowrap;
+        margin-bottom: 24px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--border-color);
+        -ms-overflow-style: none; /* Hide scrollbar IE and Edge */
+        scrollbar-width: none; /* Hide scrollbar Firefox */
+    }
+    
+    /* Hide scrollbar for Chrome, Safari and Opera */
+    .admin-nav::-webkit-scrollbar {
+        display: none;
+    }
+    
+    .admin-nav-item {
+        display: flex;
+        align-items: center;
+        padding: 10px 16px;
+        margin-right: 8px;
+        border-radius: var(--radius);
+        cursor: pointer;
+        transition: all 0.2s;
+        color: var(--text-color);
+        text-decoration: none;
+        font-size: 14px;
+        position: relative;
+    }
+    
+    .admin-nav-item.active {
+        color: var(--primary-color);
+        font-weight: 500;
+    }
+    
+    .admin-nav-item.active::after {
+        content: '';
+        position: absolute;
+        bottom: -9px;
+        left: 0;
+        width: 100%;
+        height: 3px;
+        background-color: var(--primary-color);
+        border-radius: 3px 3px 0 0;
+    }
+    
+    .admin-nav-item:hover:not(.active) {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+    
+    .admin-nav-item svg {
+        margin-right: 8px;
+        width: 16px;
+        height: 16px;
+    }
+    
+    .admin-content {
+        width: 100%;
+        padding: 20px;
+    }
+    
+    .admin-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+    }
+    
+    .admin-title {
+        font-size: 24px;
+        font-weight: 600;
+        color: var(--primary-color);
+    }
+    
+    .admin-card {
+        background-color: white;
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 20px;
+        margin-bottom: 24px;
+    }
+    
+    .admin-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+    
+    .admin-card-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--text-color);
+    }
+    
+    .admin-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    
+    .stat-card {
+        background-color: white;
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 16px;
+        text-align: center;
+    }
+    
+    .stat-title {
+        font-size: 14px;
+        color: #666;
+        margin-bottom: 8px;
+    }
+    
+    .stat-value {
+        font-size: 24px;
+        font-weight: 600;
+        color: var(--primary-color);
+    }
+    
+    /* Improved table styles */
+    .admin-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        border-radius: var(--radius);
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        border: 1px solid var(--border-color);
+    }
+    
+    .admin-table th, .admin-table td {
+        padding: 12px 16px;
+        text-align: left;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .admin-table th {
+        font-weight: 600;
+        background-color: var(--secondary-color);
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        font-size: 13px;
+    }
+
+    .admin-table tr:last-child td {
+        border-bottom: none;
+    }
+    
+    .admin-table tr:hover {
+        background-color: rgba(0, 0, 0, 0.02);
+    }
+    
+    /* Action buttons in tables */
+    .action-btn {
+        display: inline-block;
+        padding: 6px 12px;
+        font-size: 13px;
+        border-radius: var(--radius);
+        text-decoration: none;
+        color: var(--text-color);
+        background-color: var(--secondary-color);
+        border: 1px solid var(--border-color);
+        transition: all 0.2s;
+    }
+    
+    .action-btn:hover {
+        background-color: #e0e0e0;
+    }
+    
+    /* Enhanced form styles */
+    .admin-form {
+        max-width: 700px;
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+        color: var(--text-color);
+    }
+
+    .form-group small {
+        display: block;
+        margin-top: 4px;
+        color: #666;
+        font-size: 12px;
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius);
+        font-family: 'Inter', sans-serif;
+        background-color: white;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    
+    .form-control:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 2px rgba(80, 70, 229, 0.25);
+        outline: none;
+    }
+    
+    /* Custom checkbox styles */
+    .form-check {
+        display: flex;
+        align-items: center;
+        margin-bottom: 16px;
+        position: relative;
+        padding-left: 30px;
+        cursor: pointer;
+    }
+    
+    .form-check input {
+        position: absolute;
+        opacity: 0;
+        cursor: pointer;
+        height: 0;
+        width: 0;
+    }
+    
+    .form-check label {
+        margin-bottom: 0;
+        cursor: pointer;
+    }
+    
+    .checkmark {
+        position: absolute;
+        top: 2px;
+        left: 0;
+        height: 18px;
+        width: 18px;
+        background-color: white;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+    }
+    
+    .form-check:hover input ~ .checkmark {
+        background-color: #f5f5f5;
+    }
+    
+    .form-check input:checked ~ .checkmark {
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+    }
+    
+    .checkmark:after {
+        content: "";
+        position: absolute;
+        display: none;
+    }
+    
+    .form-check input:checked ~ .checkmark:after {
+        display: block;
+    }
+    
+    .form-check .checkmark:after {
+        left: 6px;
+        top: 2px;
+        width: 4px;
+        height: 9px;
+        border: solid white;
+        border-width: 0 2px 2px 0;
+        transform: rotate(45deg);
+    }
+    
+    .user-info {
+        background-color: var(--light-gray);
+        padding: 16px;
+        border-radius: var(--radius);
+        margin-bottom: 16px;
+        border: 1px solid var(--border-color);
+    }
+    
+    .user-info p {
+        margin-bottom: 8px;
+    }
+    
+    .btn-primary {
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        padding: 12px 20px;
+        border-radius: var(--radius);
+        cursor: pointer;
+        font-weight: 500;
+        text-decoration: none;
+        transition: background-color 0.2s;
+    }
+    
+    .btn-primary:hover {
+        background-color: #4038c7;
+    }
+    
+    .btn-secondary {
+        background-color: var(--secondary-color);
+        color: var(--text-color);
+        border: 1px solid var(--border-color);
+        padding: 12px 20px;
+        border-radius: var(--radius);
+        cursor: pointer;
+        font-weight: 500;
+        text-decoration: none;
+        transition: background-color 0.2s;
+    }
+    
+    .btn-secondary:hover {
+        background-color: #e0e0e0;
+    }
+    
+    /* Badge styles */
+    .badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+    
+    .badge-primary {
+        background-color: var(--primary-color);
+        color: white;
+    }
+    
+    .badge-secondary {
+        background-color: var(--secondary-color);
+        color: var(--text-color);
+    }
+    
+    .pagination {
+        display: flex;
+        justify-content: center;
+        list-style: none;
+        margin-top: 24px;
+    }
+    
+    .pagination li {
+        margin: 0 4px;
+    }
+    
+    .pagination li a {
+        display: block;
+        padding: 8px 12px;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius);
+        color: var(--text-color);
+        text-decoration: none;
+    }
+    
+    .pagination li.active a {
+        background-color: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .admin-content {
+            padding: 16px 12px;
+        }
+        
+        .admin-stats {
+            grid-template-columns: 1fr 1fr;
+        }
+        
+        .admin-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        
+        .admin-table {
+            font-size: 14px;
+        }
+        
+        .admin-table th, .admin-table td {
+            padding: 8px 10px;
+        }
+    }
+    
+    /* Dark mode adjustments */
+    @media (prefers-color-scheme: dark) {
+        .admin-card, .stat-card {
+            background-color: var(--light-gray);
+        }
+        
+        .admin-table th {
+            background-color: rgba(80, 70, 229, 0.1);
+        }
+        
+        .admin-table tr:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+        
+        .form-control {
+            background-color: var(--light-gray);
+            color: var(--text-color);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .checkmark {
+            background-color: var(--light-gray);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        .form-check:hover input ~ .checkmark {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .action-btn {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+        
+        .action-btn:hover {
+            background-color: rgba(255, 255, 255, 0.15);
+        }
+        
+        .btn-secondary {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+        
+        .btn-secondary:hover {
+            background-color: rgba(255, 255, 255, 0.15);
+        }
+        
+        .btn-primary:hover {
+            background-color: #5d51ff;
+        }
+    }
+    
+    .user-detail-value {
+        flex: 1;
+    }
+    
+    /* Truncation utility class */
+    .text-truncate {
+        max-width: 300px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    <nav class="admin-nav">
+        <a href="{{ url_for('admin.index') }}" class="admin-nav-item {% if request.endpoint == 'admin.index' %}active{% endif %}">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+            Dashboard
+        </a>
+        <a href="{{ url_for('admin.models') }}" class="admin-nav-item {% if request.endpoint in ['admin.models', 'admin.edit_model', 'admin.add_model'] %}active{% endif %}">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v3M12 20v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M1 12h3M20 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>
+            Models
+        </a>
+        <a href="{{ url_for('admin.users') }}" class="admin-nav-item {% if request.endpoint == 'admin.users' or request.endpoint == 'admin.user_detail' %}active{% endif %}">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Users
+        </a>
+        <a href="{{ url_for('admin.votes') }}" class="admin-nav-item {% if request.endpoint == 'admin.votes' %}active{% endif %}">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Votes
+        </a>
+        <a href="{{ url_for('admin.statistics') }}" class="admin-nav-item {% if request.endpoint == 'admin.statistics' %}active{% endif %}">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 12V8"/><path d="M13 12v-2"/><path d="M8 12v-5"/></svg>
+            Statistics
+        </a>
+        <a href="{{ url_for('admin.activity') }}" class="admin-nav-item {% if request.endpoint == 'admin.activity' %}active{% endif %}">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12h-8v8h8v-8z"/><path d="M3 21V3h18v9"/><path d="M12 3v6H3"/></svg>
+            Activity
+        </a>
+    </nav>
+    
+    <div class="admin-content">
+        {% block admin_content %}{% endblock %}
+    </div>
+</div>
+{% endblock %} 

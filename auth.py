@@ -4,6 +4,7 @@ from authlib.integrations.flask_client import OAuth
 import os
 from models import db, User
 import requests
+from functools import wraps
 
 auth = Blueprint("auth", __name__)
 oauth = OAuth()
@@ -22,6 +23,31 @@ def init_oauth(app):
         api_base_url="https://huggingface.co/api/",
         client_kwargs={},
     )
+
+
+def is_admin(user):
+    """Check if a user is in the ADMIN_USERS environment variable"""
+    if not user or not user.is_authenticated:
+        return False
+    
+    admin_users = os.getenv("ADMIN_USERS", "").split(",")
+    return user.username in [username.strip() for username in admin_users]
+
+
+def admin_required(f):
+    """Decorator to require admin access for a route"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            flash("Please log in to access this page", "error")
+            return redirect(url_for("auth.login", next=request.url))
+        
+        if not is_admin(current_user):
+            flash("You do not have permission to access this page", "error")
+            return redirect(url_for("arena"))
+            
+        return f(*args, **kwargs)
+    return decorated_function
 
 
 @auth.route("/login")

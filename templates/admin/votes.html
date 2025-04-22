@@ -1,0 +1,75 @@
+{% extends "admin/base.html" %}
+
+{% block admin_content %}
+<div class="admin-header">
+    <div class="admin-title">Votes</div>
+</div>
+
+<div class="admin-card">
+    <div class="admin-card-header">
+        <div class="admin-card-title">Recent Votes</div>
+    </div>
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Date</th>
+                <th>Type</th>
+                <th>User</th>
+                <th>Chosen Model</th>
+                <th>Rejected Model</th>
+                <th>Text</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for vote in votes %}
+            <tr>
+                <td>{{ vote.id }}</td>
+                <td>{{ vote.vote_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>{{ vote.model_type }}</td>
+                <td>
+                    {% if vote.user %}
+                        <a href="{{ url_for('admin.user_detail', user_id=vote.user.id) }}">{{ vote.user.username }}</a>
+                    {% else %}
+                        Anonymous
+                    {% endif %}
+                </td>
+                <td>{{ vote.chosen.name }}</td>
+                <td>{{ vote.rejected.name }}</td>
+                <td>
+                    <div class="text-truncate" title="{{ vote.text }}">
+                        {{ vote.text }}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    {% if pagination.pages > 1 %}
+    <nav aria-label="Page navigation">
+        <ul class="pagination">
+            {% if pagination.has_prev %}
+            <li><a href="{{ url_for('admin.votes', page=pagination.prev_num) }}">&laquo; Previous</a></li>
+            {% endif %}
+            
+            {% for page_num in pagination.iter_pages(left_edge=2, left_current=2, right_current=3, right_edge=2) %}
+                {% if page_num %}
+                    {% if page_num == pagination.page %}
+                    <li class="active"><a href="#">{{ page_num }}</a></li>
+                    {% else %}
+                    <li><a href="{{ url_for('admin.votes', page=page_num) }}">{{ page_num }}</a></li>
+                    {% endif %}
+                {% else %}
+                    <li class="disabled"><a href="#">...</a></li>
+                {% endif %}
+            {% endfor %}
+            
+            {% if pagination.has_next %}
+            <li><a href="{{ url_for('admin.votes', page=pagination.next_num) }}">Next &raquo;</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %} 

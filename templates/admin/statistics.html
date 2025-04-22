@@ -1,0 +1,173 @@
+{% extends "admin/base.html" %}
+
+{% block admin_content %}
+<div class="admin-header">
+    <div class="admin-title">Statistics</div>
+</div>
+
+<div class="admin-card">
+    <div class="admin-card-header">
+        <div class="admin-card-title">Daily Votes by Model Type (Last 30 Days)</div>
+    </div>
+    <canvas id="dailyVotesChart" height="250"></canvas>
+</div>
+
+<div class="admin-card">
+    <div class="admin-card-header">
+        <div class="admin-card-title">New Users by Month</div>
+    </div>
+    <canvas id="monthlyUsersChart" height="250"></canvas>
+</div>
+
+<div class="admin-card">
+    <div class="admin-card-header">
+        <div class="admin-card-title">Model ELO History</div>
+    </div>
+    <canvas id="modelHistoryChart" height="300"></canvas>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const chartData = {{ chart_data|safe }};
+    
+    // Daily votes by model type
+    const dailyVotesCtx = document.getElementById('dailyVotesChart').getContext('2d');
+    new Chart(dailyVotesCtx, {
+        type: 'line',
+        data: {
+            labels: chartData.dailyVotes.labels,
+            datasets: [
+                {
+                    label: 'TTS Votes',
+                    data: chartData.dailyVotes.ttsCounts,
+                    backgroundColor: 'rgba(80, 70, 229, 0.1)',
+                    borderColor: 'rgba(80, 70, 229, 1)',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: true,
+                    pointRadius: 2,
+                    pointBackgroundColor: '#5046e5'
+                },
+                {
+                    label: 'Conversational Votes',
+                    data: chartData.dailyVotes.convCounts,
+                    backgroundColor: 'rgba(236, 72, 153, 0.1)',
+                    borderColor: 'rgba(236, 72, 153, 1)',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: true,
+                    pointRadius: 2,
+                    pointBackgroundColor: '#ec4899'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                yAxes: [{
+                    ticks: {
+                        beginAtZero: true,
+                        precision: 0
+                    }
+                }]
+            },
+            tooltips: {
+                mode: 'index',
+                intersect: false
+            }
+        }
+    });
+    
+    // Monthly users chart
+    const monthlyUsersCtx = document.getElementById('monthlyUsersChart').getContext('2d');
+    new Chart(monthlyUsersCtx, {
+        type: 'bar',
+        data: {
+            labels: chartData.monthlyUsers.labels,
+            datasets: [{
+                label: 'New Users',
+                data: chartData.monthlyUsers.counts,
+                backgroundColor: 'rgba(16, 185, 129, 0.7)',
+                borderColor: 'rgba(16, 185, 129, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                yAxes: [{
+                    ticks: {
+                        beginAtZero: true,
+                        precision: 0
+                    }
+                }]
+            }
+        }
+    });
+    
+    // Model ELO history chart
+    const modelHistoryCtx = document.getElementById('modelHistoryChart').getContext('2d');
+    
+    // Prepare datasets for each model
+    const modelDatasets = [];
+    const colors = [
+        { backgroundColor: 'rgba(80, 70, 229, 0.1)', borderColor: 'rgba(80, 70, 229, 1)' },
+        { backgroundColor: 'rgba(236, 72, 153, 0.1)', borderColor: 'rgba(236, 72, 153, 1)' },
+        { backgroundColor: 'rgba(16, 185, 129, 0.1)', borderColor: 'rgba(16, 185, 129, 1)' },
+        { backgroundColor: 'rgba(245, 158, 11, 0.1)', borderColor: 'rgba(245, 158, 11, 1)' },
+        { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 1)' }
+    ];
+    
+    let colorIndex = 0;
+    for (const modelName in chartData.modelHistory) {
+        const model = chartData.modelHistory[modelName];
+        modelDatasets.push({
+            label: modelName,
+            data: model.scores,
+            backgroundColor: colors[colorIndex % colors.length].backgroundColor,
+            borderColor: colors[colorIndex % colors.length].borderColor,
+            borderWidth: 2,
+            tension: 0.3,
+            fill: false,
+            pointRadius: 1
+        });
+        colorIndex++;
+    }
+    
+    // If we have any model data, create the chart
+    if (modelDatasets.length > 0) {
+        // Get timestamps from the first model (they should all have the same timepoints)
+        const firstModel = Object.values(chartData.modelHistory)[0];
+        
+        new Chart(modelHistoryCtx, {
+            type: 'line',
+            data: {
+                labels: firstModel.timestamps,
+                datasets: modelDatasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    yAxes: [{
+                        ticks: {
+                            beginAtZero: false
+                        }
+                    }]
+                },
+                tooltips: {
+                    mode: 'index',
+                    intersect: false
+                }
+            }
+        });
+    } else {
+        // If no model data, show a message
+        document.getElementById('modelHistoryChart').parentNode.innerHTML = 
+            '<div style="text-align: center; padding: 20px;">No model history data available yet.</div>';
+    }
+});
+</script>
+{% endblock %} 

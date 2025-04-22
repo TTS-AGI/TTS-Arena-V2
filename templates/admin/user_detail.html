@@ -1,0 +1,131 @@
+{% extends "admin/base.html" %}
+
+{% block admin_content %}
+<div class="admin-header">
+    <div class="admin-title">User Details</div>
+    <a href="{{ url_for('admin.users') }}" class="btn-secondary">Back to Users</a>
+</div>
+
+<div class="admin-card">
+    <div class="admin-card-header">
+        <div class="admin-card-title">User Information</div>
+    </div>
+    <div class="user-info">
+        <div class="user-detail-row">
+            <div class="user-detail-label">Username:</div>
+            <div class="user-detail-value">{{ user.username }}</div>
+        </div>
+        <div class="user-detail-row">
+            <div class="user-detail-label">Hugging Face ID:</div>
+            <div class="user-detail-value">{{ user.hf_id }}</div>
+        </div>
+        <div class="user-detail-row">
+            <div class="user-detail-label">Join Date:</div>
+            <div class="user-detail-value">{{ user.join_date.strftime('%Y-%m-%d %H:%M:%S') }}</div>
+        </div>
+    </div>
+    
+    <div class="user-stats">
+        <div class="stat-card">
+            <div class="stat-title">Total Votes</div>
+            <div class="stat-value">{{ total_votes }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-title">TTS Votes</div>
+            <div class="stat-value">{{ tts_votes }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-title">Conversational Votes</div>
+            <div class="stat-value">{{ conversational_votes }}</div>
+        </div>
+    </div>
+</div>
+
+{% if favorite_models %}
+<div class="admin-card">
+    <div class="admin-card-header">
+        <div class="admin-card-title">Favorite Models</div>
+    </div>
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>Model</th>
+                <th>Votes</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for model in favorite_models %}
+            <tr>
+                <td>{{ model.name }}</td>
+                <td>{{ model.count }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% if recent_votes %}
+<div class="admin-card">
+    <div class="admin-card-header">
+        <div class="admin-card-title">Recent Votes</div>
+    </div>
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Chosen Model</th>
+                <th>Rejected Model</th>
+                <th>Text</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for vote in recent_votes %}
+            <tr>
+                <td>{{ vote.vote_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>{{ vote.model_type }}</td>
+                <td>{{ vote.chosen.name }}</td>
+                <td>{{ vote.rejected.name }}</td>
+                <td>
+                    <div class="text-truncate" title="{{ vote.text }}">
+                        {{ vote.text }}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<style>
+    .user-detail-row {
+        display: flex;
+        margin-bottom: 10px;
+    }
+    
+    .user-detail-label {
+        font-weight: 600;
+        min-width: 150px;
+    }
+    
+    .user-detail-value {
+        flex: 1;
+    }
+    
+    .user-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 16px;
+        margin-top: 24px;
+    }
+    
+    .text-truncate {
+        max-width: 300px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+</style>
+{% endblock %} 

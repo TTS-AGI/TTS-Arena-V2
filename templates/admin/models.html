@@ -1,0 +1,75 @@
+{% extends "admin/base.html" %}
+
+{% block admin_content %}
+<div class="admin-header">
+    <div class="admin-title">Manage Models</div>
+</div>
+
+<div class="admin-card">
+    <div class="admin-card-header">
+        <div class="admin-card-title">TTS Models</div>
+    </div>
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>ELO Score</th>
+                <th>Matches</th>
+                <th>Active</th>
+                <th>Open Source</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for model in tts_models %}
+            <tr>
+                <td>{{ model.id }}</td>
+                <td>{{ model.name }}</td>
+                <td>{{ model.current_elo|int }}</td>
+                <td>{{ model.match_count }}</td>
+                <td>{{ "Yes" if model.is_active else "No" }}</td>
+                <td>{{ "Yes" if model.is_open else "No" }}</td>
+                <td>
+                    <a href="{{ url_for('admin.edit_model', model_id=model.id) }}" class="action-btn">Edit</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="admin-card">
+    <div class="admin-card-header">
+        <div class="admin-card-title">Conversational Models</div>
+    </div>
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>ELO Score</th>
+                <th>Matches</th>
+                <th>Active</th>
+                <th>Open Source</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for model in conversational_models %}
+            <tr>
+                <td>{{ model.id }}</td>
+                <td>{{ model.name }}</td>
+                <td>{{ model.current_elo|int }}</td>
+                <td>{{ model.match_count }}</td>
+                <td>{{ "Yes" if model.is_active else "No" }}</td>
+                <td>{{ "Yes" if model.is_open else "No" }}</td>
+                <td>
+                    <a href="{{ url_for('admin.edit_model', model_id=model.id) }}" class="action-btn">Edit</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %} 

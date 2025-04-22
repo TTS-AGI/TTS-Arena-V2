@@ -1,0 +1,205 @@
+{% extends "admin/base.html" %}
+
+{% block admin_content %}
+<div class="admin-header">
+    <div class="admin-title">Dashboard</div>
+</div>
+
+<div class="admin-stats">
+    <div class="stat-card">
+        <div class="stat-title">Total Users</div>
+        <div class="stat-value">{{ stats.total_users }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-title">Total Votes</div>
+        <div class="stat-value">{{ stats.total_votes }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-title">TTS Votes</div>
+        <div class="stat-value">{{ stats.tts_votes }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-title">Conversational Votes</div>
+        <div class="stat-value">{{ stats.conversational_votes }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-title">TTS Models</div>
+        <div class="stat-value">{{ stats.tts_models }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-title">Conversational Models</div>
+        <div class="stat-value">{{ stats.conversational_models }}</div>
+    </div>
+</div>
+
+<div class="admin-card">
+    <div class="admin-card-header">
+        <div class="admin-card-title">Daily Votes (Last 30 Days)</div>
+    </div>
+    <canvas id="votesChart" height="200"></canvas>
+</div>
+
+<div class="admin-card">
+    <div class="admin-card-header">
+        <div class="admin-card-title">Top TTS Models</div>
+    </div>
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>Rank</th>
+                <th>Model</th>
+                <th>ELO Score</th>
+                <th>Win Rate</th>
+                <th>Total Matches</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for model in top_tts_models %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ model.name }}</td>
+                <td>{{ model.current_elo|int }}</td>
+                <td>{{ model.win_rate|round }}%</td>
+                <td>{{ model.match_count }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="admin-card">
+    <div class="admin-card-header">
+        <div class="admin-card-title">Top Conversational Models</div>
+    </div>
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>Rank</th>
+                <th>Model</th>
+                <th>ELO Score</th>
+                <th>Win Rate</th>
+                <th>Total Matches</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for model in top_conversational_models %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ model.name }}</td>
+                <td>{{ model.current_elo|int }}</td>
+                <td>{{ model.win_rate|round }}%</td>
+                <td>{{ model.match_count }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="admin-row">
+    <div class="admin-card">
+        <div class="admin-card-header">
+            <div class="admin-card-title">Recent Votes</div>
+            <a href="{{ url_for('admin.votes') }}" class="btn-secondary">View All</a>
+        </div>
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>User</th>
+                    <th>Chosen Model</th>
+                    <th>Rejected Model</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for vote in recent_votes %}
+                <tr>
+                    <td>{{ vote.vote_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>{{ vote.model_type }}</td>
+                    <td>
+                        {% if vote.user %}
+                            <a href="{{ url_for('admin.user_detail', user_id=vote.user.id) }}">{{ vote.user.username }}</a>
+                        {% else %}
+                            Anonymous
+                        {% endif %}
+                    </td>
+                    <td>{{ vote.chosen.name }}</td>
+                    <td>{{ vote.rejected.name }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="admin-row">
+    <div class="admin-card">
+        <div class="admin-card-header">
+            <div class="admin-card-title">Recent Users</div>
+            <a href="{{ url_for('admin.users') }}" class="btn-secondary">View All</a>
+        </div>
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Join Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in recent_users %}
+                <tr>
+                    <td>{{ user.username }}</td>
+                    <td>{{ user.join_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>
+                        <a href="{{ url_for('admin.user_detail', user_id=user.id) }}" class="btn-secondary">View Details</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const votesData = {{ daily_votes_data|safe }};
+    
+    // Daily votes chart
+    const votesCtx = document.getElementById('votesChart').getContext('2d');
+    new Chart(votesCtx, {
+        type: 'line',
+        data: {
+            labels: votesData.labels,
+            datasets: [{
+                label: 'Daily Votes',
+                data: votesData.counts,
+                backgroundColor: 'rgba(80, 70, 229, 0.1)',
+                borderColor: 'rgba(80, 70, 229, 1)',
+                borderWidth: 2,
+                tension: 0.3,
+                fill: true,
+                pointRadius: 3,
+                pointBackgroundColor: '#5046e5'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                yAxes: [{
+                    ticks: {
+                        beginAtZero: true,
+                        precision: 0
+                    }
+                }]
+            },
+            tooltips: {
+                mode: 'index',
+                intersect: false
+            }
+        }
+    });
+});
+</script>
+{% endblock %} 
