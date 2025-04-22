@@ -2,6 +2,10 @@ import os
 from huggingface_hub import HfApi, hf_hub_download
 from apscheduler.schedulers.background import BackgroundScheduler
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
+
+year = datetime.now().year
+month = datetime.now().month
 
 # Check if running in a Huggin Face Space
 IS_SPACES = False
@@ -920,7 +924,7 @@ def setup_periodic_tasks():
                         # Upload zip file
                         api.upload_file(
                             path_or_fileobj=zip_path,
-                            path_in_repo=f"votes/{vote_uuid}.zip",
+                            path_in_repo=f"votes/{year}/{month}/{vote_uuid}.zip",
                             repo_id=preferences_repo_id,
                             repo_type="dataset",
                             commit_message=f"Add preference data {vote_uuid}"
