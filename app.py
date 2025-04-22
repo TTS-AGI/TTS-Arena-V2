@@ -867,7 +867,7 @@ def setup_periodic_tasks():
     if not IS_SPACES:
         return
 
-    db_path = app.config["SQLALCHEMY_DATABASE_URI"].replace("sqlite:///", "") # Get relative path
+    db_path = app.config["SQLALCHEMY_DATABASE_URI"].replace("sqlite:///", "instance/") # Get relative path
     preferences_repo_id = "TTS-AGI/arena-v2-preferences"
     database_repo_id = "TTS-AGI/database-arena-v2"
     votes_dir = "./votes"
