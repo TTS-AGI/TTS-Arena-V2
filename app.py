@@ -838,9 +838,39 @@ if __name__ == "__main__":
 
     # Force Flask to prefer HTTPS for generated URLs
     app.config["PREFERRED_URL_SCHEME"] = "https"
-    from waitress import serve
-
+    
     if IS_SPACES:
-        serve(app, host="0.0.0.0", port=int(os.environ.get("PORT", 7860)))
+        # Use gunicorn for production with optimized settings for 2 vCPU
+        # Workers = (2 * CPU cores) + 1
+        # Each worker consumes ~50MB memory
+        import gunicorn.app.base
+        
+        class StandaloneApplication(gunicorn.app.base.BaseApplication):
+            def __init__(self, app, options=None):
+                self.options = options or {}
+                self.application = app
+                super().__init__()
+
+            def load_config(self):
+                for key, value in self.options.items():
+                    self.cfg.set(key.lower(), value)
+
+            def load(self):
+                return self.application
+        
+        options = {
+            'bind': f"0.0.0.0:{int(os.environ.get('PORT', 7860))}",
+            'workers': 5,  # (2 * 2) + 1 for 2 vCPU
+            'threads': 2,  # 2 threads per worker
+            'worker_class': 'gevent',
+            'worker_connections': 1000,
+            'timeout': 120,
+            'keepalive': 5,
+            'max_requests': 1000,
+            'max_requests_jitter': 50,
+            'preload_app': True,
+        }
+        
+        StandaloneApplication(app, options).run()
     else:
         app.run(debug=True, ssl_context="adhoc")
