@@ -920,7 +920,7 @@ def setup_periodic_tasks():
                         # Upload zip file
                         api.upload_file(
                             path_or_fileobj=zip_path,
-                            path_in_repo=f"{vote_uuid}.zip",
+                            path_in_repo=f"votes/{vote_uuid}.zip",
                             repo_id=preferences_repo_id,
                             repo_type="dataset",
                             commit_message=f"Add preference data {vote_uuid}"
