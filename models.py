@@ -473,6 +473,13 @@ def insert_initial_models():
             is_open=False,
             model_url="https://hume.ai/",
         ),
+        Model(
+            id="megatts3",
+            name="MegaTTS 3",
+            model_type=ModelType.TTS,
+            is_open=True,
+            model_url="https://github.com/bytedance/MegaTTS3",
+        ),
     ]
     conversational_models = [
         Model(
