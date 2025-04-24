@@ -67,6 +67,10 @@ model_mapping = {
         "provider": "hume",
         "model": "octave",
     },
+    "megatts3": {
+        "provider": "megatts3",
+        "model": "megatts3",
+    },
 }
 
 url = "https://tts-agi-tts-router-v2.hf.space/tts"
