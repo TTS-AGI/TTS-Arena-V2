@@ -1361,16 +1361,16 @@
             .then(data => {
                 if (data.success) {
                     // Use the toast function from base.html
-                    toast(data.message, 'success');
+                    openToast(data.message, 'success');
                 } else {
-                    toast(data.error || 'Failed to update visibility', 'error');
+                    openToast(data.error || 'Failed to update visibility', 'error');
                     // Revert the toggle state if there was an error
                     this.checked = !this.checked;
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                toast('Failed to update visibility', 'error');
+                openToast('Failed to update visibility', 'error');
                 // Revert the toggle state if there was an error
                 this.checked = !this.checked;
             });
