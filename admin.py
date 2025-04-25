@@ -368,10 +368,14 @@ def activity():
         Vote.vote_date >= last_24h
     ).group_by('hour').order_by('hour').all()
     
-    # Generate all hours for the past 24 hours
+    # Generate all hours for the past 24 hours with correct hour formatting
     hour_list = []
+    current_time = datetime.utcnow()
+    
     for i in range(24, -1, -1):
-        hour_time = datetime.utcnow() - timedelta(hours=i)
+        # Calculate the hour time and truncate to hour
+        hour_time = current_time - timedelta(hours=i)
+        hour_time = hour_time.replace(minute=0, second=0, microsecond=0)
         hour_list.append(hour_time.strftime('%Y-%m-%d %H:00'))
     
     # Create a dictionary with actual vote counts
