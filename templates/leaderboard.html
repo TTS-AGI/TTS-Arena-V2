@@ -646,6 +646,33 @@
         text-align: left;
         border-bottom: 1px solid var(--border-color);
     }
+    
+    .voters-table tr:last-child td {
+        border-bottom: none;
+    }
+    
+    .voters-table tr.current-user {
+        background-color: rgba(80, 70, 229, 0.1);
+    }
+    
+    .voters-table tr.current-user td {
+        font-weight: 500;
+    }
+    
+    .thank-you-message {
+        text-align: center;
+        margin-top: 24px;
+        padding: 16px;
+        background-color: rgba(80, 200, 120, 0.1);
+        border-radius: var(--radius);
+        font-size: 16px;
+    }
+    
+    @media (prefers-color-scheme: dark) {
+        .thank-you-message {
+            background-color: rgba(80, 200, 120, 0.2);
+        }
+    }
 
     .voters-table th {
         font-weight: 600;
@@ -1045,7 +1072,7 @@
                 </thead>
                 <tbody>
                     {% for voter in top_voters %}
-                    <tr>
+                    <tr{% if current_user.is_authenticated and current_user.username == voter.username %} class="current-user"{% endif %}>
                         <td>{{ voter.rank }}</td>
                         <td><a href="https://huggingface.co/{{ voter.username }}" target="_blank" rel="noopener">{{ voter.username }}</a></td>
                         <td>{{ voter.vote_count }}</td>
@@ -1058,6 +1085,12 @@
         {% else %}
         <div class="no-data">
             <p>No voters data available yet. Start voting to appear on the leaderboard!</p>
+        </div>
+        {% endif %}
+        
+        {% if top_voters %}
+        <div class="thank-you-message">
+            <p>Thank you to all our top voters for helping improve TTS Arena through your feedback and participation! Your contributions make this community better.</p>
         </div>
         {% endif %}
         
