@@ -29,7 +29,7 @@ def index():
     recent_users = User.query.order_by(User.join_date.desc()).limit(10).all()
     
     # Get daily votes for the past 30 days
-    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+    thirty_days_ago = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=30)
     
     daily_votes = db.session.query(
         func.date(Vote.vote_date).label('date'),
@@ -178,7 +178,7 @@ def votes():
 def statistics():
     """View detailed statistics"""
     # Get daily votes for the past 30 days by model type
-    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+    thirty_days_ago = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=30)
     
     tts_daily_votes = db.session.query(
         func.date(Vote.vote_date).label('date'),
@@ -211,8 +211,9 @@ def statistics():
     
     # Generate a complete list of dates for the past 30 days
     date_list = []
+    current_date = datetime.utcnow()
     for i in range(30, -1, -1):
-        date_list.append((datetime.utcnow() - timedelta(days=i)).date())
+        date_list.append((current_date - timedelta(days=i)).date())
     
     # Create dictionaries with actual vote counts
     tts_vote_counts = {day.date: day.count for day in tts_daily_votes}
