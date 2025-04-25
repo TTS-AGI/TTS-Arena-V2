@@ -27,76 +27,80 @@
     <div class="admin-card-header">
         <div class="admin-card-title">Recent TTS Votes</div>
     </div>
-    <table class="admin-table">
-        <thead>
-            <tr>
-                <th>Time</th>
-                <th>User</th>
-                <th>Chosen Model</th>
-                <th>Rejected Model</th>
-                <th>Text</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for vote in recent_tts_votes %}
-            <tr>
-                <td>{{ vote.vote_date.strftime('%Y-%m-%d %H:%M') }}</td>
-                <td>
-                    {% if vote.user %}
-                        <a href="{{ url_for('admin.user_detail', user_id=vote.user.id) }}">{{ vote.user.username }}</a>
-                    {% else %}
-                        Anonymous
-                    {% endif %}
-                </td>
-                <td>{{ vote.chosen.name }}</td>
-                <td>{{ vote.rejected.name }}</td>
-                <td>
-                    <div class="text-truncate" title="{{ vote.text }}">
-                        {{ vote.text }}
-                    </div>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="table-responsive">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>User</th>
+                    <th>Chosen Model</th>
+                    <th>Rejected Model</th>
+                    <th>Text</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for vote in recent_tts_votes %}
+                <tr>
+                    <td>{{ vote.vote_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>
+                        {% if vote.user %}
+                            <a href="{{ url_for('admin.user_detail', user_id=vote.user.id) }}">{{ vote.user.username }}</a>
+                        {% else %}
+                            Anonymous
+                        {% endif %}
+                    </td>
+                    <td>{{ vote.chosen.name }}</td>
+                    <td>{{ vote.rejected.name }}</td>
+                    <td>
+                        <div class="text-truncate" title="{{ vote.text }}">
+                            {{ vote.text }}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 
 <div class="admin-card">
     <div class="admin-card-header">
         <div class="admin-card-title">Recent Conversational Votes</div>
     </div>
-    <table class="admin-table">
-        <thead>
-            <tr>
-                <th>Time</th>
-                <th>User</th>
-                <th>Chosen Model</th>
-                <th>Rejected Model</th>
-                <th>Text Preview</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for vote in recent_conv_votes %}
-            <tr>
-                <td>{{ vote.vote_date.strftime('%Y-%m-%d %H:%M') }}</td>
-                <td>
-                    {% if vote.user %}
-                        <a href="{{ url_for('admin.user_detail', user_id=vote.user.id) }}">{{ vote.user.username }}</a>
-                    {% else %}
-                        Anonymous
-                    {% endif %}
-                </td>
-                <td>{{ vote.chosen.name }}</td>
-                <td>{{ vote.rejected.name }}</td>
-                <td>
-                    <div class="text-truncate" title="{{ vote.text }}">
-                        {{ vote.text }}
-                    </div>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="table-responsive">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>User</th>
+                    <th>Chosen Model</th>
+                    <th>Rejected Model</th>
+                    <th>Text Preview</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for vote in recent_conv_votes %}
+                <tr>
+                    <td>{{ vote.vote_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>
+                        {% if vote.user %}
+                            <a href="{{ url_for('admin.user_detail', user_id=vote.user.id) }}">{{ vote.user.username }}</a>
+                        {% else %}
+                            Anonymous
+                        {% endif %}
+                    </td>
+                    <td>{{ vote.chosen.name }}</td>
+                    <td>{{ vote.rejected.name }}</td>
+                    <td>
+                        <div class="text-truncate" title="{{ vote.text }}">
+                            {{ vote.text }}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 
 <script>

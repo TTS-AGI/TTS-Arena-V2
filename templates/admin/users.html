@@ -9,37 +9,39 @@
     <div class="admin-card-header">
         <div class="admin-card-title">All Users</div>
     </div>
-    <table class="admin-table">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Username</th>
-                <th>HF ID</th>
-                <th>Join Date</th>
-                <th>Admin Status</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for user in users %}
-            <tr>
-                <td>{{ user.id }}</td>
-                <td>{{ user.username }}</td>
-                <td>{{ user.hf_id }}</td>
-                <td>{{ user.join_date.strftime('%Y-%m-%d %H:%M') }}</td>
-                <td>
-                    {% if g.is_admin and user.username in admin_users %}
-                    <span class="badge badge-primary">Admin</span>
-                    {% else %}
-                    <span class="badge badge-secondary">User</span>
-                    {% endif %}
-                </td>
-                <td>
-                    <a href="{{ url_for('admin.user_detail', user_id=user.id) }}" class="action-btn">View Details</a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="table-responsive">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>HF ID</th>
+                    <th>Join Date</th>
+                    <th>Admin Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>{{ user.id }}</td>
+                    <td>{{ user.username }}</td>
+                    <td>{{ user.hf_id }}</td>
+                    <td>{{ user.join_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>
+                        {% if g.is_admin and user.username in admin_users %}
+                        <span class="badge badge-primary">Admin</span>
+                        {% else %}
+                        <span class="badge badge-secondary">User</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('admin.user_detail', user_id=user.id) }}" class="action-btn">View Details</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 {% endblock %} 
