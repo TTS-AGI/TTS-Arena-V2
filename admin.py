@@ -40,16 +40,20 @@ def index():
     
     # Generate a complete list of dates for the past 30 days
     date_list = []
+    current_date = datetime.utcnow()
     for i in range(30, -1, -1):
-        date_list.append((datetime.utcnow() - timedelta(days=i)).date())
+        date_list.append((current_date - timedelta(days=i)).date())
     
     # Create a dictionary with actual vote counts
     vote_counts = {day.date: day.count for day in daily_votes}
     
     # Build complete datasets including days with zero votes
+    formatted_dates = [date.strftime("%Y-%m-%d") for date in date_list]
+    vote_counts_list = [vote_counts.get(date, 0) for date in date_list]
+    
     daily_votes_data = {
-        "labels": [date.strftime("%Y-%m-%d") for date in date_list],
-        "counts": [vote_counts.get(date, 0) for date in date_list]
+        "labels": formatted_dates,
+        "counts": vote_counts_list
     }
     
     # Get top models
