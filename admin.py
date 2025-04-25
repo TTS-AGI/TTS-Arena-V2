@@ -239,18 +239,30 @@ def statistics():
     top_models = Model.query.order_by(Model.match_count.desc()).limit(5).all()
     
     # Get first and last timestamp to create a consistent timeline
-    earliest = datetime.utcnow()
-    latest = datetime.utcnow() - timedelta(days=90)  # Default 90 days back
+    earliest = datetime.utcnow() - timedelta(days=30)  # Default to 30 days ago
+    latest = datetime.utcnow()  # Default to now
     
     # Find actual earliest and latest timestamps across all models
+    has_elo_history = False
     for model in top_models:
         first = EloHistory.query.filter_by(model_id=model.id).order_by(EloHistory.timestamp).first()
         last = EloHistory.query.filter_by(model_id=model.id).order_by(EloHistory.timestamp.desc()).first()
         
-        if first and first.timestamp < earliest:
-            earliest = first.timestamp
-        if last and last.timestamp > latest:
-            latest = last.timestamp
+        if first and last:
+            has_elo_history = True
+            if first.timestamp < earliest:
+                earliest = first.timestamp
+            if last.timestamp > latest:
+                latest = last.timestamp
+    
+    # If no history was found, use a default range of the last 30 days
+    if not has_elo_history:
+        earliest = datetime.utcnow() - timedelta(days=30)
+        latest = datetime.utcnow()
+    
+    # Make sure the date range is valid (earliest before latest)
+    if earliest > latest:
+        earliest = latest - timedelta(days=30)
     
     # Generate a list of dates for the ELO history timeline
     # Using 1-day intervals for a smoother chart
@@ -265,7 +277,13 @@ def statistics():
     
     model_history = {}
     
+    # Initialize empty data for all top models
     for model in top_models:
+        model_history[model.name] = {
+            "timestamps": formatted_elo_dates,
+            "scores": [None] * len(formatted_elo_dates)  # Initialize with None values
+        }
+        
         history = EloHistory.query.filter_by(
             model_id=model.id
         ).order_by(EloHistory.timestamp).all()
@@ -277,18 +295,19 @@ def statistics():
                 date_key = h.timestamp.date().strftime("%Y-%m-%d")
                 history_dict[date_key] = h.elo_score
             
-            # Fill in missing dates with the previous score (or None if no previous score)
+            # Fill in missing dates with the previous score
+            last_score = model.current_elo  # Default to current ELO if no history
             scores = []
-            last_score = None
+            
             for date in formatted_elo_dates:
                 if date in history_dict:
                     last_score = history_dict[date]
-                scores.append(last_score if last_score is not None else None)
+                scores.append(last_score)
             
-            model_history[model.name] = {
-                "timestamps": formatted_elo_dates,
-                "scores": scores
-            }
+            model_history[model.name]["scores"] = scores
+        else:
+            # If no history, use the current Elo for all dates
+            model_history[model.name]["scores"] = [model.current_elo] * len(formatted_elo_dates)
     
     chart_data = {
         "dailyVotes": {
