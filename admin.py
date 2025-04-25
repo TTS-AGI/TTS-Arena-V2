@@ -38,9 +38,18 @@ def index():
         func.date(Vote.vote_date)
     ).order_by(func.date(Vote.vote_date)).all()
     
+    # Generate a complete list of dates for the past 30 days
+    date_list = []
+    for i in range(30, -1, -1):
+        date_list.append((datetime.utcnow() - timedelta(days=i)).date())
+    
+    # Create a dictionary with actual vote counts
+    vote_counts = {day.date: day.count for day in daily_votes}
+    
+    # Build complete datasets including days with zero votes
     daily_votes_data = {
-        "labels": [str(day.date) for day in daily_votes],
-        "counts": [day.count for day in daily_votes]
+        "labels": [date.strftime("%Y-%m-%d") for date in date_list],
+        "counts": [vote_counts.get(date, 0) for date in date_list]
     }
     
     # Get top models
@@ -196,20 +205,64 @@ def statistics():
         'year', 'month'
     ).order_by('year', 'month').all()
     
-    # Format for charts
-    dates = [str(day.date) for day in tts_daily_votes]
-    tts_counts = [day.count for day in tts_daily_votes]
+    # Generate a complete list of dates for the past 30 days
+    date_list = []
+    for i in range(30, -1, -1):
+        date_list.append((datetime.utcnow() - timedelta(days=i)).date())
     
-    # Build a complete date list and fill missing dates with 0
-    conv_date_dict = {str(day.date): day.count for day in conv_daily_votes}
-    conv_counts = [conv_date_dict.get(date, 0) for date in dates]
+    # Create dictionaries with actual vote counts
+    tts_vote_counts = {day.date: day.count for day in tts_daily_votes}
+    conv_vote_counts = {day.date: day.count for day in conv_daily_votes}
     
-    # Format monthly users data
-    monthly_labels = [f"{int(record.month)}/{int(record.year)}" for record in monthly_users]
-    monthly_counts = [record.count for record in monthly_users]
+    # Format dates consistently for charts
+    formatted_dates = [date.strftime("%Y-%m-%d") for date in date_list]
+    
+    # Build complete datasets including days with zero votes
+    tts_counts = [tts_vote_counts.get(date, 0) for date in date_list]
+    conv_counts = [conv_vote_counts.get(date, 0) for date in date_list]
+    
+    # Generate all month/year combinations for the past 12 months
+    current_date = datetime.utcnow()
+    month_list = []
+    for i in range(11, -1, -1):
+        past_date = current_date - timedelta(days=i*30)  # Approximate
+        month_list.append((past_date.year, past_date.month))
+    
+    # Create a dictionary with actual user counts
+    user_counts = {(record.year, record.month): record.count for record in monthly_users}
+    
+    # Build complete monthly datasets including months with zero new users
+    monthly_labels = [f"{month}/{year}" for year, month in month_list]
+    monthly_counts = [user_counts.get((year, month), 0) for year, month in month_list]
     
     # Model performance over time
     top_models = Model.query.order_by(Model.match_count.desc()).limit(5).all()
+    
+    # Get first and last timestamp to create a consistent timeline
+    earliest = datetime.utcnow()
+    latest = datetime.utcnow() - timedelta(days=90)  # Default 90 days back
+    
+    # Find actual earliest and latest timestamps across all models
+    for model in top_models:
+        first = EloHistory.query.filter_by(model_id=model.id).order_by(EloHistory.timestamp).first()
+        last = EloHistory.query.filter_by(model_id=model.id).order_by(EloHistory.timestamp.desc()).first()
+        
+        if first and first.timestamp < earliest:
+            earliest = first.timestamp
+        if last and last.timestamp > latest:
+            latest = last.timestamp
+    
+    # Generate a list of dates for the ELO history timeline
+    # Using 1-day intervals for a smoother chart
+    elo_dates = []
+    current = earliest
+    while current <= latest:
+        elo_dates.append(current.date())
+        current += timedelta(days=1)
+    
+    # Format dates consistently
+    formatted_elo_dates = [date.strftime("%Y-%m-%d") for date in elo_dates]
+    
     model_history = {}
     
     for model in top_models:
@@ -218,14 +271,28 @@ def statistics():
         ).order_by(EloHistory.timestamp).all()
         
         if history:
+            # Create a dictionary mapping dates to scores
+            history_dict = {}
+            for h in history:
+                date_key = h.timestamp.date().strftime("%Y-%m-%d")
+                history_dict[date_key] = h.elo_score
+            
+            # Fill in missing dates with the previous score (or None if no previous score)
+            scores = []
+            last_score = None
+            for date in formatted_elo_dates:
+                if date in history_dict:
+                    last_score = history_dict[date]
+                scores.append(last_score if last_score is not None else None)
+            
             model_history[model.name] = {
-                "timestamps": [h.timestamp.strftime("%Y-%m-%d") for h in history],
-                "scores": [h.elo_score for h in history]
+                "timestamps": formatted_elo_dates,
+                "scores": scores
             }
     
     chart_data = {
         "dailyVotes": {
-            "labels": dates,
+            "labels": formatted_dates,
             "ttsCounts": tts_counts,
             "convCounts": conv_counts
         },
@@ -282,9 +349,19 @@ def activity():
         Vote.vote_date >= last_24h
     ).group_by('hour').order_by('hour').all()
     
+    # Generate all hours for the past 24 hours
+    hour_list = []
+    for i in range(24, -1, -1):
+        hour_time = datetime.utcnow() - timedelta(hours=i)
+        hour_list.append(hour_time.strftime('%Y-%m-%d %H:00'))
+    
+    # Create a dictionary with actual vote counts
+    vote_counts = {hour.hour: hour.count for hour in hourly_votes}
+    
+    # Build complete hourly datasets including hours with zero votes
     hourly_data = {
-        "labels": [hour.hour for hour in hourly_votes],
-        "counts": [hour.count for hour in hourly_votes]
+        "labels": hour_list,
+        "counts": [vote_counts.get(hour, 0) for hour in hour_list]
     }
     
     return render_template(
