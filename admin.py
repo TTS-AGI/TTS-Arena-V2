@@ -363,7 +363,8 @@ def activity():
     ).order_by(Vote.vote_date.desc()).limit(20).all()
     
     # Get votes per hour for the last 24 hours
-    last_24h = datetime.utcnow() - timedelta(hours=24)
+    current_time = datetime.utcnow()
+    last_24h = current_time.replace(minute=0, second=0, microsecond=0) - timedelta(hours=24)
     
     # Use SQLite-compatible date formatting
     hourly_votes = db.session.query(
@@ -375,8 +376,6 @@ def activity():
     
     # Generate all hours for the past 24 hours with correct hour formatting
     hour_list = []
-    current_time = datetime.utcnow()
-    
     for i in range(24, -1, -1):
         # Calculate the hour time and truncate to hour
         hour_time = current_time - timedelta(hours=i)
