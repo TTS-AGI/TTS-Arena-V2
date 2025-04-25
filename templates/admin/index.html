@@ -43,56 +43,60 @@
     <div class="admin-card-header">
         <div class="admin-card-title">Top TTS Models</div>
     </div>
-    <table class="admin-table">
-        <thead>
-            <tr>
-                <th>Rank</th>
-                <th>Model</th>
-                <th>ELO Score</th>
-                <th>Win Rate</th>
-                <th>Total Matches</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for model in top_tts_models %}
-            <tr>
-                <td>{{ loop.index }}</td>
-                <td>{{ model.name }}</td>
-                <td>{{ model.current_elo|int }}</td>
-                <td>{{ model.win_rate|round }}%</td>
-                <td>{{ model.match_count }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="table-responsive">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Model</th>
+                    <th>ELO Score</th>
+                    <th>Win Rate</th>
+                    <th>Total Matches</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for model in top_tts_models %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ model.name }}</td>
+                    <td>{{ model.current_elo|int }}</td>
+                    <td>{{ model.win_rate|round }}%</td>
+                    <td>{{ model.match_count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 
 <div class="admin-card">
     <div class="admin-card-header">
         <div class="admin-card-title">Top Conversational Models</div>
     </div>
-    <table class="admin-table">
-        <thead>
-            <tr>
-                <th>Rank</th>
-                <th>Model</th>
-                <th>ELO Score</th>
-                <th>Win Rate</th>
-                <th>Total Matches</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for model in top_conversational_models %}
-            <tr>
-                <td>{{ loop.index }}</td>
-                <td>{{ model.name }}</td>
-                <td>{{ model.current_elo|int }}</td>
-                <td>{{ model.win_rate|round }}%</td>
-                <td>{{ model.match_count }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="table-responsive">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Model</th>
+                    <th>ELO Score</th>
+                    <th>Win Rate</th>
+                    <th>Total Matches</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for model in top_conversational_models %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ model.name }}</td>
+                    <td>{{ model.current_elo|int }}</td>
+                    <td>{{ model.win_rate|round }}%</td>
+                    <td>{{ model.match_count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 
 <div class="admin-row">
@@ -101,34 +105,36 @@
             <div class="admin-card-title">Recent Votes</div>
             <a href="{{ url_for('admin.votes') }}" class="btn-secondary">View All</a>
         </div>
-        <table class="admin-table">
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Type</th>
-                    <th>User</th>
-                    <th>Chosen Model</th>
-                    <th>Rejected Model</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for vote in recent_votes %}
-                <tr>
-                    <td>{{ vote.vote_date.strftime('%Y-%m-%d %H:%M') }}</td>
-                    <td>{{ vote.model_type }}</td>
-                    <td>
-                        {% if vote.user %}
-                            <a href="{{ url_for('admin.user_detail', user_id=vote.user.id) }}">{{ vote.user.username }}</a>
-                        {% else %}
-                            Anonymous
-                        {% endif %}
-                    </td>
-                    <td>{{ vote.chosen.name }}</td>
-                    <td>{{ vote.rejected.name }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div class="table-responsive">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>User</th>
+                        <th>Chosen Model</th>
+                        <th>Rejected Model</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for vote in recent_votes %}
+                    <tr>
+                        <td>{{ vote.vote_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>{{ vote.model_type }}</td>
+                        <td>
+                            {% if vote.user %}
+                                <a href="{{ url_for('admin.user_detail', user_id=vote.user.id) }}">{{ vote.user.username }}</a>
+                            {% else %}
+                                Anonymous
+                            {% endif %}
+                        </td>
+                        <td>{{ vote.chosen.name }}</td>
+                        <td>{{ vote.rejected.name }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
@@ -138,26 +144,28 @@
             <div class="admin-card-title">Recent Users</div>
             <a href="{{ url_for('admin.users') }}" class="btn-secondary">View All</a>
         </div>
-        <table class="admin-table">
-            <thead>
-                <tr>
-                    <th>Username</th>
-                    <th>Join Date</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for user in recent_users %}
-                <tr>
-                    <td>{{ user.username }}</td>
-                    <td>{{ user.join_date.strftime('%Y-%m-%d %H:%M') }}</td>
-                    <td>
-                        <a href="{{ url_for('admin.user_detail', user_id=user.id) }}" class="btn-secondary">View Details</a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div class="table-responsive">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Join Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in recent_users %}
+                    <tr>
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.join_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>
+                            <a href="{{ url_for('admin.user_detail', user_id=user.id) }}" class="btn-secondary">View Details</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
