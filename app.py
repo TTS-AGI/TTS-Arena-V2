@@ -284,17 +284,20 @@ def arena():
 def leaderboard():
     tts_leaderboard = get_leaderboard_data(ModelType.TTS)
     conversational_leaderboard = get_leaderboard_data(ModelType.CONVERSATIONAL)
+    top_voters = get_top_voters(10)  # Get top 10 voters
 
     # Initialize personal leaderboard data
     tts_personal_leaderboard = None
     conversational_personal_leaderboard = None
+    user_leaderboard_visibility = None
 
-    # If user is logged in, get their personal leaderboard
+    # If user is logged in, get their personal leaderboard and visibility setting
     if current_user.is_authenticated:
         tts_personal_leaderboard = get_user_leaderboard(current_user.id, ModelType.TTS)
         conversational_personal_leaderboard = get_user_leaderboard(
             current_user.id, ModelType.CONVERSATIONAL
         )
+        user_leaderboard_visibility = current_user.show_in_leaderboard
 
     # Get key dates for the timeline
     tts_key_dates = get_key_historical_dates(ModelType.TTS)
@@ -316,6 +319,8 @@ def leaderboard():
         conversational_key_dates=conversational_key_dates,
         formatted_tts_dates=formatted_tts_dates,
         formatted_conversational_dates=formatted_conversational_dates,
+        top_voters=top_voters,
+        user_leaderboard_visibility=user_leaderboard_visibility
     )
 
 
@@ -973,6 +978,23 @@ def init_db():
     with app.app_context():
         db.create_all()
         print("Database initialized!")
+
+
+@app.route("/api/toggle-leaderboard-visibility", methods=["POST"])
+def toggle_leaderboard_visibility():
+    """Toggle whether the current user appears in the top voters leaderboard"""
+    if not current_user.is_authenticated:
+        return jsonify({"error": "You must be logged in to change this setting"}), 401
+    
+    new_status = toggle_user_leaderboard_visibility(current_user.id)
+    if new_status is None:
+        return jsonify({"error": "User not found"}), 404
+        
+    return jsonify({
+        "success": True, 
+        "visible": new_status,
+        "message": "You are now visible in the voters leaderboard" if new_status else "You are now hidden from the voters leaderboard"
+    })
 
 
 if __name__ == "__main__":

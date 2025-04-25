@@ -13,6 +13,7 @@ class User(db.Model, UserMixin):
     hf_id = db.Column(db.String(100), unique=True, nullable=False)
     join_date = db.Column(db.DateTime, default=datetime.utcnow)
     votes = db.relationship("Vote", backref="user", lazy=True)
+    show_in_leaderboard = db.Column(db.Boolean, default=True)
 
     def __repr__(self):
         return f"<User {self.username}>"
@@ -521,3 +522,54 @@ def insert_initial_models():
                 existing.is_active = model.is_active
 
     db.session.commit()
+
+
+def get_top_voters(limit=10):
+    """
+    Get the top voters by number of votes.
+    
+    Args:
+        limit (int): Number of users to return
+        
+    Returns:
+        list: List of dictionaries containing user data and vote counts
+    """
+    # Query users who have opted in to the leaderboard and have at least one vote
+    top_users = db.session.query(
+        User, func.count(Vote.id).label('vote_count')
+    ).join(Vote).filter(
+        User.show_in_leaderboard == True
+    ).group_by(User.id).order_by(
+        func.count(Vote.id).desc()
+    ).limit(limit).all()
+    
+    result = []
+    for i, (user, vote_count) in enumerate(top_users, 1):
+        result.append({
+            "rank": i,
+            "username": user.username,
+            "vote_count": vote_count,
+            "join_date": user.join_date.strftime("%b %d, %Y")
+        })
+    
+    return result
+
+
+def toggle_user_leaderboard_visibility(user_id):
+    """
+    Toggle whether a user appears in the voters leaderboard
+    
+    Args:
+        user_id (int): The user ID
+        
+    Returns:
+        bool: New visibility state
+    """
+    user = User.query.get(user_id)
+    if not user:
+        return None
+        
+    user.show_in_leaderboard = not user.show_in_leaderboard
+    db.session.commit()
+    
+    return user.show_in_leaderboard
