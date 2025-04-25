@@ -46,22 +46,24 @@
     <div class="admin-card-header">
         <div class="admin-card-title">Favorite Models</div>
     </div>
-    <table class="admin-table">
-        <thead>
-            <tr>
-                <th>Model</th>
-                <th>Votes</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for model in favorite_models %}
-            <tr>
-                <td>{{ model.name }}</td>
-                <td>{{ model.count }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="table-responsive">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Model</th>
+                    <th>Votes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for model in favorite_models %}
+                <tr>
+                    <td>{{ model.name }}</td>
+                    <td>{{ model.count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 {% endif %}
 
@@ -70,32 +72,34 @@
     <div class="admin-card-header">
         <div class="admin-card-title">Recent Votes</div>
     </div>
-    <table class="admin-table">
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Type</th>
-                <th>Chosen Model</th>
-                <th>Rejected Model</th>
-                <th>Text</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for vote in recent_votes %}
-            <tr>
-                <td>{{ vote.vote_date.strftime('%Y-%m-%d %H:%M') }}</td>
-                <td>{{ vote.model_type }}</td>
-                <td>{{ vote.chosen.name }}</td>
-                <td>{{ vote.rejected.name }}</td>
-                <td>
-                    <div class="text-truncate" title="{{ vote.text }}">
-                        {{ vote.text }}
-                    </div>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="table-responsive">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Chosen Model</th>
+                    <th>Rejected Model</th>
+                    <th>Text</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for vote in recent_votes %}
+                <tr>
+                    <td>{{ vote.vote_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>{{ vote.model_type }}</td>
+                    <td>{{ vote.chosen.name }}</td>
+                    <td>{{ vote.rejected.name }}</td>
+                    <td>
+                        <div class="text-truncate" title="{{ vote.text }}">
+                            {{ vote.text }}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 {% endif %}
 
@@ -126,6 +130,16 @@
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+    }
+    
+    @media (max-width: 576px) {
+        .user-detail-row {
+            flex-direction: column;
+        }
+        
+        .user-detail-label {
+            margin-bottom: 4px;
+        }
     }
 </style>
 {% endblock %} 
