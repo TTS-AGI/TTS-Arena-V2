@@ -1190,6 +1190,9 @@
                         }, 500);
                     });
                 });
+
+                // Fetch cached sentences again to update the list
+                fetchCachedSentences();
             })
             .catch(error => {
                 loadingContainer.style.display = 'none';
