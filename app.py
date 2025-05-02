@@ -286,11 +286,11 @@ def verify_turnstile():
         # Otherwise redirect back to turnstile page
         return redirect(url_for("turnstile_page", redirect_url=redirect_url))
 
-with open("harvard_sentences.txt", "r") as f:
+with open("sentences.txt", "r") as f, open("emotional_sentences.txt", "r") as f_emotional:
     # Store all sentences and clean them up
-    all_harvard_sentences = [line.strip() for line in f.readlines() if line.strip()]
+    all_sentences = [line.strip() for line in f.readlines() if line.strip()] + [line.strip() for line in f_emotional.readlines() if line.strip()]
     # Shuffle for initial random selection if needed, but main list remains ordered
-    initial_sentences = random.sample(all_harvard_sentences, min(len(all_harvard_sentences), 500)) # Limit initial pass for template
+    initial_sentences = random.sample(all_sentences, min(len(all_sentences), 500)) # Limit initial pass for template
 
 @app.route("/")
 def arena():
