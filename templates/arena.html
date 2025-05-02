@@ -28,6 +28,10 @@
         <button type="submit" class="mobile-synth-btn">Synthesize</button>
     </form>
 
+    <div id="initial-keyboard-hint" class="keyboard-hint">
+        Press <kbd>R</kbd> for random text, <kbd>N</kbd> for next random round, <kbd>Enter</kbd> to generate
+    </div>
+
     <div class="loading-container" style="display: none;">
         <div class="loader-wrapper">
             <div class="loader-animation">
@@ -71,10 +75,6 @@
                 </button>
             </div>
         </div>
-
-        <div class="keyboard-hint">
-            Press <kbd>Space</kbd> to play/pause audio, <kbd>A</kbd> or <kbd>B</kbd> to vote after listening, <kbd>R</kbd> for random audio, <kbd>Enter</kbd> to generate
-        </div>
     </div>
 
     <div class="vote-results" style="display: none;">
@@ -90,7 +90,11 @@
     </div>
 
     <div class="next-round-container" style="display: none;">
-        <button class="next-round-btn">Next Round <span class="shortcut-key">N</span></button>
+        <button class="next-round-btn">Next Round</button>
+    </div>
+
+    <div id="playback-keyboard-hint" class="keyboard-hint" style="display: none;">
+        Press <kbd>Space</kbd> to play/pause, <kbd>A</kbd>/<kbd>B</kbd> to vote, <kbd>R</kbd> for random text, <kbd>N</kbd> for next random round
     </div>
 </div>
 
@@ -166,10 +170,6 @@
                 </div>
             </div>
 
-            <div class="keyboard-hint">
-                Press <kbd>Space</kbd> to play/pause audio, <kbd>A</kbd> or <kbd>B</kbd> to vote after listening, <kbd>R</kbd> for random audio, <kbd>Enter</kbd> to generate
-            </div>
-            
             <div class="podcast-vote-results vote-results" style="display: none;">
                 <h3 class="results-heading">Vote Recorded!</h3>
                 <div class="results-content">
@@ -1008,6 +1008,10 @@
         const modelNameDisplays = document.querySelectorAll('.model-name-display');
         const wavePlayerContainers = document.querySelectorAll('.wave-player-container');
         
+        // Get references to the keyboard hint elements
+        const initialKeyboardHint = document.getElementById('initial-keyboard-hint');
+        const playbackKeyboardHint = document.getElementById('playback-keyboard-hint');
+        
         let bothSamplesPlayed = false;
         let currentSessionId = null;
         let modelNames = { a: '', b: '' };
@@ -1025,8 +1029,10 @@
         });
         
         // Load fallback sentences directly from Flask variable (JSON string)
-        // Note: This might cause linter errors, but JSON is JS-compatible.
-        const fallbackRandomTexts = JSON.parse({{ harvard_sentences | tojson | safe }});
+        // Assign to a variable first to help linters
+        // eslint-disable-next-line
+        const fallbackSentencesJson = {{ harvard_sentences | tojson | safe }};
+        const fallbackRandomTexts = JSON.parse(fallbackSentencesJson);
         
         // Fetch cached sentences on load
         function fetchCachedSentences() {
@@ -1109,11 +1115,13 @@
 
             textInput.blur();
             
-            // Show loading animation
+            // Show loading animation and hide hints
             loadingContainer.style.display = 'flex';
             playersContainer.style.display = 'none';
             voteResultsContainer.style.display = 'none';
             nextRoundContainer.style.display = 'none';
+            initialKeyboardHint.style.display = 'none'; 
+            playbackKeyboardHint.style.display = 'none';
             
             // Reset vote buttons
             voteButtons.forEach(btn => {
@@ -1153,9 +1161,11 @@
                 wavePlayers.a.loadAudio(data.audio_a);
                 wavePlayers.b.loadAudio(data.audio_b);
                 
-                // Show players
+                // Show players and playback hint, hide initial hint
                 loadingContainer.style.display = 'none';
                 playersContainer.style.display = 'flex';
+                initialKeyboardHint.style.display = 'none';
+                playbackKeyboardHint.style.display = 'block';
                 
                 // Setup automatic sequential playback
                 wavePlayers.a.wavesurfer.once('ready', function() {
@@ -1297,6 +1307,10 @@
             
             // Reset the flag for both samples played
             bothSamplesPlayed = false;
+
+            // Show initial hint, hide playback hint
+            initialKeyboardHint.style.display = 'block';
+            playbackKeyboardHint.style.display = 'none';
         }
         
         function handleRandom() {
@@ -1324,6 +1338,18 @@
             openToast("Please listen to both audio samples before voting", "info");
         }
         
+        // New function for N shortcut: Random + Synthesize
+        function handleNextRandomRound() {
+            console.log("Handling Next Random Round (N shortcut)");
+            handleRandom(); // Selects random text and puts it in input
+            
+            // Use setTimeout to ensure the input value is updated before synthesizing
+            // Especially important if handleRandom involves async operations (though it doesn't currently)
+            setTimeout(() => {
+                handleSynthesize(); // Triggers synthesis with the text now in the input
+            }, 0); 
+        }
+
         // Add submit event listener to form
         synthForm.addEventListener('submit', handleSynthesize);
         
@@ -1347,10 +1373,27 @@
             
             // Only process keyboard shortcuts if text input is not focused
             if (document.activeElement === textInput) {
-                return;
+                // Allow Enter key to submit form from text input
+                if (e.key === 'Enter') {
+                    // Check if Shift, Ctrl, Alt, or Meta keys are pressed
+                    if (!e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
+                        e.preventDefault(); // Prevent default form submission if needed
+                        handleSynthesize(); // Trigger synthesis
+                    }
+                }
+                return; // Don't process other keys if input is focused
             }
-            
-            if (e.key.toLowerCase() === 'a') {
+
+            // Allow Enter key to submit form when button is focused maybe?
+            // Or just generally allow Enter if not focused on input
+             if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                 // Check if the initial form is visible (or loading is not happening)
+                 if (playersContainer.style.display === 'none' && loadingContainer.style.display === 'none') {
+                    e.preventDefault();
+                    handleSynthesize();
+                 }
+                 // Do nothing if players are visible (don't want Enter to re-submit)
+            } else if (e.key.toLowerCase() === 'a') {
                 if (bothSamplesPlayed && !voteButtons[0].disabled) {
                     handleVote('a');
                 } else if (playersContainer.style.display !== 'none' && !bothSamplesPlayed) {
@@ -1363,15 +1406,14 @@
                     showListenToastMessage();
                 }
             } else if (e.key.toLowerCase() === 'n') {
-                if (nextRoundContainer.style.display === 'block') {
-                    if (!e.ctrlKey && !e.metaKey) {
-                        e.preventDefault();
-                    }
-                    resetToInitialState();
+                // N for Next Random Round (works anytime except when input focused)
+                if (!e.ctrlKey && !e.metaKey && !e.altKey) { // Ensure Alt isn't pressed either
+                    e.preventDefault();
+                    handleNextRandomRound(); // New function for random + synthesize
                 }
             } else if (e.key.toLowerCase() === 'r') {
-                // Only trigger random if not trying to reload (Ctrl+R or Cmd+R)
-                if (!e.ctrlKey && !e.metaKey) {
+                // R for Random Text (works anytime except when input focused)
+                if (!e.ctrlKey && !e.metaKey && !e.altKey) { // Ensure Alt isn't pressed either
                     e.preventDefault();
                     handleRandom();
                 }
