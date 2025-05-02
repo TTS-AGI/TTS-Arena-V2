@@ -478,6 +478,7 @@ def insert_initial_models():
             id="megatts3",
             name="MegaTTS 3",
             model_type=ModelType.TTS,
+            is_active=False,
             is_open=True,
             model_url="https://github.com/bytedance/MegaTTS3",
         ),
