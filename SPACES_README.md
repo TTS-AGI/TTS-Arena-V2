@@ -1,5 +1,5 @@
 ---
-title: TTS Arena V2 (Beta)
+title: TTS Arena V2
 emoji: 🏆
 colorFrom: blue
 colorTo: blue
