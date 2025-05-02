@@ -5,7 +5,7 @@ colorFrom: blue
 colorTo: blue
 sdk: gradio
 app_file: app.py
-short_description: (Private) Vote on the latest TTS models!
+short_description: Vote on the latest TTS models!
 pinned: true
 
 hf_oauth: true
