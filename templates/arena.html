@@ -28,7 +28,7 @@
         <button type="submit" class="mobile-synth-btn">Synthesize</button>
     </form>
 
-    <div class="keyboard-hint">
+    <div class="keyboard-hint" id="tts-input-hint">
         Press <kbd>R</kbd> for random text, <kbd>Enter</kbd> to synthesize, <kbd>N</kbd> for random + synthesize
     </div>
 
@@ -77,7 +77,7 @@
         </div>
 
         <div class="keyboard-hint">
-            Press <kbd>Space</kbd> to play/pause audio, <kbd>A</kbd> or <kbd>B</kbd> to vote after listening
+            Press <kbd>Space</kbd> to play/pause audio, <kbd>A</kbd> or <kbd>B</kbd> to vote after listening, <kbd>R</kbd> for random text, <kbd>Enter</kbd> to synthesize, <kbd>N</kbd> for new random + synthesize
         </div>
     </div>
 
@@ -119,7 +119,7 @@
                 <!-- Script lines will be added here -->
             </div>
             
-            <div class="keyboard-hint podcast-keyboard-hint">
+            <div class="keyboard-hint podcast-keyboard-hint" id="podcast-input-hint">
                 Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> or <kbd>Alt</kbd>+<kbd>Enter</kbd> to add a new line, <kbd>R</kbd> for random script, <kbd>Enter</kbd> to generate, <kbd>N</kbd> for random + generate
             </div>
 
@@ -171,7 +171,7 @@
             </div>
 
             <div class="keyboard-hint">
-                Press <kbd>Space</kbd> to play/pause audio, <kbd>A</kbd> or <kbd>B</kbd> to vote after listening
+                Press <kbd>Space</kbd> to play/pause audio, <kbd>A</kbd> or <kbd>B</kbd> to vote after listening, <kbd>R</kbd> for random script, <kbd>Enter</kbd> to generate, <kbd>N</kbd> for new random + generate
             </div>
             
             <div class="podcast-vote-results vote-results" style="display: none;">
@@ -1011,28 +1011,24 @@
         const rejectedModelNameElement = document.querySelector('.rejected-model-name');
         const modelNameDisplays = document.querySelectorAll('.model-name-display');
         const wavePlayerContainers = document.querySelectorAll('.wave-player-container');
+        const ttsInputHint = document.getElementById('tts-input-hint');
         
         let bothSamplesPlayed = false;
         let currentSessionId = null;
         let modelNames = { a: '', b: '' };
         let wavePlayers = { a: null, b: null };
-        let cachedSentences = []; // To store sentences available in cache
+        let cachedSentences = [];
         
-        // Initialize WavePlayers with mobile settings
         wavePlayerContainers.forEach(container => {
             const model = container.dataset.model;
             wavePlayers[model] = new WavePlayer(container, {
-                // Add mobile-friendly options but hide native controls
                 backend: 'MediaElement',
-                mediaControls: false // Hide native audio controls
+                mediaControls: false
             });
         });
         
-        // Load fallback sentences directly from Flask variable (JSON string)
-        // Note: This might cause linter errors, but JSON is JS-compatible.
         const fallbackRandomTexts = JSON.parse({{ harvard_sentences | tojson | safe }});
         
-        // Fetch cached sentences on load
         function fetchCachedSentences() {
             fetch('/api/tts/cached-sentences')
                 .then(response => response.ok ? response.json() : Promise.reject('Failed to fetch cached sentences'))
@@ -1042,22 +1038,18 @@
                 })
                 .catch(error => {
                     console.error('Error fetching cached sentences:', error);
-                    // Keep cachedSentences as empty array, fallback will be used
                 });
         }
         
-        // Check URL hash for direct tab access
         function checkHashAndSetTab() {
             const hash = window.location.hash.toLowerCase();
             if (hash === '#conversational') {
-                // Switch to conversational tab
                 tabs.forEach(t => t.classList.remove('active'));
                 tabContents.forEach(c => c.classList.remove('active'));
                 
                 document.querySelector('.tab[data-tab="conversational"]').classList.add('active');
                 document.getElementById('conversational-tab').classList.add('active');
             } else if (hash === '#tts') {
-                // Switch to TTS tab (explicit)
                 tabs.forEach(t => t.classList.remove('active'));
                 tabContents.forEach(c => c.classList.remove('active'));
                 
@@ -1066,29 +1058,22 @@
             }
         }
         
-        // Check hash on page load
         checkHashAndSetTab();
         
-        // Listen for hash changes
         window.addEventListener('hashchange', checkHashAndSetTab);
         
-        // Tab switching functionality
         tabs.forEach(tab => {
             tab.addEventListener('click', function() {
                 const tabId = this.dataset.tab;
                 
-                // Update URL hash without page reload
                 history.replaceState(null, null, `#${tabId}`);
                 
-                // Remove active class from all tabs and contents
                 tabs.forEach(t => t.classList.remove('active'));
                 tabContents.forEach(c => c.classList.remove('active'));
                 
-                // Add active class to clicked tab and corresponding content
                 this.classList.add('active');
                 document.getElementById(`${tabId}-tab`).classList.add('active');
                 
-                // Reset TTS tab state if switching away from it
                 if (tabId !== 'tts') {
                     resetToInitialState();
                 }
@@ -1113,28 +1098,25 @@
 
             textInput.blur();
             
-            // Show loading animation
+            if (ttsInputHint) ttsInputHint.style.display = 'none';
+
             loadingContainer.style.display = 'flex';
             playersContainer.style.display = 'none';
             voteResultsContainer.style.display = 'none';
             nextRoundContainer.style.display = 'none';
             
-            // Reset vote buttons
             voteButtons.forEach(btn => {
                 btn.disabled = true;
                 btn.classList.remove('selected');
                 btn.querySelector('.vote-loader').style.display = 'none';
             });
             
-            // Clear model name displays
             modelNameDisplays.forEach(display => {
                 display.textContent = '';
             });
             
-            // Reset the flag for both samples played
             bothSamplesPlayed = false;
             
-            // Call the API to generate TTS
             fetch('/api/tts/generate', {
                 method: 'POST',
                 headers: {
@@ -1153,25 +1135,19 @@
             .then(data => {
                 currentSessionId = data.session_id;
                 
-                // Load audio in waveplayers
                 wavePlayers.a.loadAudio(data.audio_a);
                 wavePlayers.b.loadAudio(data.audio_b);
                 
-                // Show players
                 loadingContainer.style.display = 'none';
                 playersContainer.style.display = 'flex';
                 
-                // Setup automatic sequential playback
                 wavePlayers.a.wavesurfer.once('ready', function() {
                     wavePlayers.a.play();
                     
-                    // When audio A ends, play audio B
                     wavePlayers.a.wavesurfer.once('finish', function() {
-                        // Wait a short moment before playing B
                         setTimeout(() => {
                             wavePlayers.b.play();
                             
-                            // When audio B ends, enable voting
                             wavePlayers.b.wavesurfer.once('finish', function() {
                                 bothSamplesPlayed = true;
                                 voteButtons.forEach(btn => {
@@ -1182,7 +1158,6 @@
                     });
                 });
 
-                // Fetch cached sentences again to update the list
                 fetchCachedSentences();
             })
             .catch(error => {
@@ -1190,10 +1165,11 @@
                 openToast(error.message, "error");
                 console.error('Error:', error);
             });
+
+            if (ttsInputHint) ttsInputHint.style.display = 'block';
         }
         
         function handleVote(model) {
-            // Disable both vote buttons
             voteButtons.forEach(btn => {
                 btn.disabled = true;
                 if (btn.dataset.model === model) {
@@ -1201,7 +1177,6 @@
                 }
             });
             
-            // Send vote to server
             fetch('/api/tts/vote', {
                 method: 'POST',
                 headers: {
@@ -1221,40 +1196,31 @@
                 return response.json();
             })
             .then(data => {
-                // Hide loaders
                 voteButtons.forEach(btn => {
                     btn.querySelector('.vote-loader').style.display = 'none';
                     
-                    // Highlight the selected button
                     if (btn.dataset.model === model) {
                         btn.classList.add('selected');
                     }
                 });
 
-
-                // Store model names from vote response
                 if (data.chosen_model && data.chosen_model.name) {
                     modelNames.a = data.names.a;
                     modelNames.b = data.names.b;
                 }
                 
-                // Now display model names after voting
                 modelNameDisplays[0].textContent = modelNames.a ? `(${modelNames.a})` : '';
                 modelNameDisplays[1].textContent = modelNames.b ? `(${modelNames.b})` : '';
                 
-                // Show vote results
                 chosenModelNameElement.textContent = data.chosen_model.name;
                 rejectedModelNameElement.textContent = data.rejected_model.name;
                 voteResultsContainer.style.display = 'block';
                 
-                // Show next round button
                 nextRoundContainer.style.display = 'block';
                 
-                // Show success toast
                 openToast("Vote recorded successfully!", "success");
             })
             .catch(error => {
-                // Re-enable vote buttons
                 voteButtons.forEach(btn => {
                     btn.disabled = false;
                     btn.querySelector('.vote-loader').style.display = 'none';
@@ -1266,56 +1232,45 @@
         }
         
         function resetToInitialState() {
-            // Hide players, results, and next round button
             playersContainer.style.display = 'none';
             voteResultsContainer.style.display = 'none';
             nextRoundContainer.style.display = 'none';
             
-            // Reset vote buttons
             voteButtons.forEach(btn => {
                 btn.disabled = true;
                 btn.classList.remove('selected');
                 btn.querySelector('.vote-loader').style.display = 'none';
             });
             
-            // Clear model name displays
             modelNameDisplays.forEach(display => {
                 display.textContent = '';
             });
             
-            // Reset model names
             modelNames = { a: '', b: '' };
             
-            // Clear text input
             textInput.value = '';
             
-            // Stop any playing audio and destroy wavesurfers
             for (const model in wavePlayers) {
                 if (wavePlayers[model]) {
                     wavePlayers[model].stop();
                 }
             }
             
-            // Reset session
             currentSessionId = null;
             
-            // Reset the flag for both samples played
             bothSamplesPlayed = false;
         }
         
         function handleRandom() {
             let selectedText = '';
             if (cachedSentences && cachedSentences.length > 0) {
-                // Select a random text from the cache
                 selectedText = cachedSentences[Math.floor(Math.random() * cachedSentences.length)];
                 console.log("Using random sentence from cache.");
             } else {
-                // Fallback to the initial list if cache is empty or failed to load
                 console.log("Cache empty or unavailable, using random sentence from fallback list.");
                 if (fallbackRandomTexts && fallbackRandomTexts.length > 0) {
                     selectedText = fallbackRandomTexts[Math.floor(Math.random() * fallbackRandomTexts.length)];
                 } else {
-                    // If fallback list is also empty, do nothing. Log an error.
                     console.error("Both cached sentences and fallback sentences are unavailable.");
                     return;
                 }
@@ -1328,10 +1283,8 @@
             openToast("Please listen to both audio samples before voting", "info");
         }
         
-        // Add submit event listener to form
         synthForm.addEventListener('submit', handleSynthesize);
         
-        // Add click event listeners to vote buttons
         voteButtons.forEach(btn => {
             btn.addEventListener('click', function() {
                 if (bothSamplesPlayed) {
@@ -1343,73 +1296,63 @@
             });
         });
         
-        // Add keyboard shortcut listeners
         document.addEventListener('keydown', function(e) {
-            // Check if TTS tab is active
             const ttsTab = document.getElementById('tts-tab');
             if (!ttsTab.classList.contains('active')) return;
             
-            // --- Shortcut logic based on current state ---
             const isInputVisible = playersContainer.style.display === 'none' && loadingContainer.style.display === 'none';
             const isPlaybackVisible = playersContainer.style.display !== 'none';
             const isNextRoundVisible = nextRoundContainer.style.display === 'block';
 
-            // Ignore shortcuts if text input is focused
             if (document.activeElement === textInput) {
-                // Allow Enter key if focused on text input and input is visible
                 if (e.key === 'Enter' && isInputVisible) {
                     e.preventDefault();
                     handleSynthesize();
                 }
-                return; // Don't process other shortcuts when input is focused
+                return;
             }
 
-            // Global shortcuts (when not focused on input)
-            if (e.key.toLowerCase() === 'r' && isInputVisible) {
-                 // Only trigger random if not trying to reload (Ctrl+R or Cmd+R)
-                if (!e.ctrlKey && !e.metaKey) {
+            if (isInputVisible) {
+                if (e.key.toLowerCase() === 'r') {
+                    if (!e.ctrlKey && !e.metaKey) {
+                        e.preventDefault();
+                        handleRandom();
+                    }
+                } else if (e.key === 'Enter') {
                     e.preventDefault();
-                    handleRandom();
-                }
-            } else if (e.key === 'Enter' && isInputVisible) {
-                e.preventDefault();
-                handleSynthesize();
-            } else if (e.key.toLowerCase() === 'n' && isInputVisible) {
-                 // 'N' for New Random Round (only when input is visible)
-                if (!e.ctrlKey && !e.metaKey) {
-                    e.preventDefault();
-                    handleRandom(); // Get random text
-                    // Add a slight delay to ensure text input is populated before synthesizing
-                    setTimeout(() => {
-                        handleSynthesize(); // Synthesize the random text
-                    }, 50);
+                    handleSynthesize();
+                } else if (e.key.toLowerCase() === 'n') {
+                    if (!e.ctrlKey && !e.metaKey) {
+                        e.preventDefault();
+                        handleRandom();
+                        setTimeout(() => {
+                            handleSynthesize();
+                        }, 50);
+                    }
                 }
             }
 
-            // Playback/Voting shortcuts (only when players are visible)
             else if (isPlaybackVisible) {
-                if (e.key === ' ') { // Space to play/pause
+                if (e.key === ' ') {
                     e.preventDefault();
-                    // If A is playing, toggle A, else if B is playing, toggle B, else play A
                     if (wavePlayers.a.isPlaying) {
                         wavePlayers.a.togglePlayPause();
                     } else if (wavePlayers.b.isPlaying) {
                         wavePlayers.b.togglePlayPause();
-                    } else {
-                        // If neither is playing, prefer playing A if it hasn't finished, else B
+                    } else if (wavePlayers.a) {
                         if (wavePlayers.a.wavesurfer.getCurrentTime() < wavePlayers.a.wavesurfer.getDuration()) {
-                            wavePlayers.a.play();
-                        } else {
+                             wavePlayers.a.play();
+                        } else if (wavePlayers.b) {
                              wavePlayers.b.play();
                         }
                     }
-                } else if (e.key.toLowerCase() === 'a') { // Vote A
+                } else if (e.key.toLowerCase() === 'a') {
                     if (bothSamplesPlayed && !voteButtons[0].disabled) {
                         handleVote('a');
                     } else if (!bothSamplesPlayed) {
                         showListenToastMessage();
                     }
-                } else if (e.key.toLowerCase() === 'b') { // Vote B
+                } else if (e.key.toLowerCase() === 'b') {
                     if (bothSamplesPlayed && !voteButtons[1].disabled) {
                         handleVote('b');
                     } else if (!bothSamplesPlayed) {
@@ -1418,7 +1361,6 @@
                 }
             }
 
-            // Next Round shortcut (only when next round button is visible)
             else if (isNextRoundVisible && e.key.toLowerCase() === 'n') {
                 if (!e.ctrlKey && !e.metaKey) {
                     e.preventDefault();
@@ -1427,20 +1369,16 @@
             }
         });
         
-        // Add event listener for random button
         randomBtn.addEventListener('click', handleRandom);
         
-        // Add event listener for next round button
         nextRoundBtn.addEventListener('click', resetToInitialState);
         
-        // Fetch cached sentences when the DOM is ready
         fetchCachedSentences();
     });
 </script>
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Variables for podcast UI
         const podcastContainer = document.querySelector('.podcast-container');
         const podcastLinesContainer = document.querySelector('.podcast-lines');
         const addLineBtn = document.querySelector('.add-line-btn');
@@ -1456,6 +1394,7 @@
         const podcastNextRoundBtn = podcastPlayerContainer.querySelector('.next-round-btn');
         const chosenModelNameElement = podcastVoteResults.querySelector('.chosen-model-name');
         const rejectedModelNameElement = podcastVoteResults.querySelector('.rejected-model-name');
+        const podcastInputHint = document.getElementById('podcast-input-hint');
         
         let podcastWavePlayers = { a: null, b: null };
         let bothPodcastSamplesPlayed = false;
@@ -1557,11 +1496,9 @@
             addPodcastLine(2);
         }
         
-        // Add a new podcast line
         function addPodcastLine(speakerNum = null) {
             const lineCount = podcastLinesContainer.querySelectorAll('.podcast-line').length;
             
-            // If speaker number isn't specified, alternate between 1 and 2
             if (speakerNum === null) {
                 speakerNum = (lineCount % 2) + 1;
             }
@@ -1583,10 +1520,8 @@
             
             podcastLinesContainer.appendChild(lineElement);
             
-            // Add event listener to remove button
             const removeBtn = lineElement.querySelector('.remove-line-btn');
             removeBtn.addEventListener('click', function() {
-                // Don't allow removing if there are only 2 lines
                 if (podcastLinesContainer.querySelectorAll('.podcast-line').length > 2) {
                     lineElement.remove();
                 } else {
@@ -1594,15 +1529,12 @@
                 }
             });
             
-            // Add event listener for keyboard navigation in the input field
             const inputField = lineElement.querySelector('.line-input');
             inputField.addEventListener('keydown', function(e) {
-                // Alt+Enter or Ctrl+Enter to add new line
                 if (e.key === 'Enter' && (e.altKey || e.ctrlKey)) {
                     e.preventDefault();
                     addPodcastLine();
                     
-                    // Focus the new line's input field
                     setTimeout(() => {
                         const inputs = podcastLinesContainer.querySelectorAll('.line-input');
                         inputs[inputs.length - 1].focus();
@@ -1613,24 +1545,18 @@
             return lineElement;
         }
         
-        // Load a random script
         function loadRandomScript() {
-            // Clear existing lines
             podcastLinesContainer.innerHTML = '';
             
-            // Select a random script
             const randomScript = randomScripts[Math.floor(Math.random() * randomScripts.length)];
             
-            // Add each line from the script
             randomScript.forEach(line => {
                 const lineElement = addPodcastLine(line.speaker);
                 lineElement.querySelector('.line-input').value = line.text;
             });
         }
         
-        // Generate podcast (mock functionality)
         function generatePodcast() {
-            // Get all lines
             const lines = [];
             podcastLinesContainer.querySelectorAll('.podcast-line').forEach(line => {
                 const speaker_id = line.querySelector('.speaker-label').textContent.includes('1') ? 0 : 1;
@@ -1641,20 +1567,17 @@
                 }
             });
             
-            // Validate that we have at least 2 lines with content
             if (lines.length < 2) {
                 openToast("Please enter at least 2 lines of dialog", "warning");
                 return;
             }
             
-            // Reset vote buttons and hide results
             podcastVoteButtons.forEach(btn => {
                 btn.disabled = true;
                 btn.classList.remove('selected');
                 btn.querySelector('.vote-loader').style.display = 'none';
             });
             
-            // Clear model name displays
             const modelNameDisplays = podcastPlayerContainer.querySelectorAll('.model-name-display');
             modelNameDisplays.forEach(display => {
                 display.textContent = '';
@@ -1663,14 +1586,13 @@
             podcastVoteResults.style.display = 'none';
             podcastNextRoundContainer.style.display = 'none';
             
-            // Reset the flag for both samples played
             bothPodcastSamplesPlayed = false;
-            
-            // Show loading animation
+
+            if (podcastInputHint) podcastInputHint.style.display = 'none';
+
             podcastLoadingContainer.style.display = 'flex';
             podcastPlayerContainer.style.display = 'none';
             
-            // Call API to generate podcast
             fetch('/api/conversational/generate', {
                 method: 'POST',
                 headers: {
@@ -1689,30 +1611,23 @@
             .then(data => {
                 currentPodcastSessionId = data.session_id;
                 
-                // Hide loading
                 podcastLoadingContainer.style.display = 'none';
                 
-                // Show player
                 podcastPlayerContainer.style.display = 'block';
                 
-                // Initialize WavePlayers if not already done
                 if (!podcastWavePlayers.a) {
                     podcastWavePlayers.a = new WavePlayer(podcastWavePlayerA, {
-                        // Add mobile-friendly options but hide native controls
                         backend: 'MediaElement',
-                        mediaControls: false // Hide native audio controls
+                        mediaControls: false
                     });
                     podcastWavePlayers.b = new WavePlayer(podcastWavePlayerB, {
-                        // Add mobile-friendly options but hide native controls
                         backend: 'MediaElement',
-                        mediaControls: false // Hide native audio controls
+                        mediaControls: false
                     });
                     
-                    // Load audio in waveplayers
                     podcastWavePlayers.a.loadAudio(data.audio_a);
                     podcastWavePlayers.b.loadAudio(data.audio_b);
                     
-                    // Force hide loading indicators after 5 seconds as a fallback
                     setTimeout(() => {
                         if (podcastWavePlayers.a && podcastWavePlayers.a.hideLoading) {
                             podcastWavePlayers.a.hideLoading();
@@ -1723,19 +1638,16 @@
                         console.log('Forced hiding of podcast loading indicators (safety timeout - existing players)');
                     }, 5000);
                 } else {
-                    // Reset and reload for existing players
                     try {
                         podcastWavePlayers.a.wavesurfer.empty();
                         podcastWavePlayers.b.wavesurfer.empty();
                         
-                        // Make sure loading indicators are reset
                         podcastWavePlayers.a.hideLoading();
                         podcastWavePlayers.b.hideLoading();
                         
                         podcastWavePlayers.a.loadAudio(data.audio_a);
                         podcastWavePlayers.b.loadAudio(data.audio_b);
                         
-                        // Force hide loading indicators after 5 seconds as a fallback
                         setTimeout(() => {
                             if (podcastWavePlayers.a && podcastWavePlayers.a.hideLoading) {
                                 podcastWavePlayers.a.hideLoading();
@@ -1748,7 +1660,6 @@
                     } catch (err) {
                         console.error('Error resetting podcast waveplayers:', err);
                         
-                        // Recreate the players if there was an error
                         podcastWavePlayers.a = new WavePlayer(podcastWavePlayerA, {
                             backend: 'MediaElement',
                             mediaControls: false
@@ -1761,7 +1672,6 @@
                         podcastWavePlayers.a.loadAudio(data.audio_a);
                         podcastWavePlayers.b.loadAudio(data.audio_b);
 
-                        // Force hide loading indicators after 5 seconds as a fallback
                         setTimeout(() => {
                             if (podcastWavePlayers.a && podcastWavePlayers.a.hideLoading) {
                                 podcastWavePlayers.a.hideLoading();
@@ -1774,17 +1684,13 @@
                     }
                 }
                 
-                // Setup automatic sequential playback
                 podcastWavePlayers.a.wavesurfer.once('ready', function() {
                     podcastWavePlayers.a.play();
                     
-                    // When audio A ends, play audio B
                     podcastWavePlayers.a.wavesurfer.once('finish', function() {
-                        // Wait a short moment before playing B
                         setTimeout(() => {
                             podcastWavePlayers.b.play();
                             
-                            // When audio B ends, enable voting
                             podcastWavePlayers.b.wavesurfer.once('finish', function() {
                                 bothPodcastSamplesPlayed = true;
                                 podcastVoteButtons.forEach(btn => {
@@ -1800,11 +1706,11 @@
                 openToast(error.message, "error");
                 console.error('Error:', error);
             });
+
+            if (podcastInputHint) podcastInputHint.style.display = 'block';
         }
         
-        // Handle vote for a podcast model
         function handlePodcastVote(model) {
-            // Disable both vote buttons
             podcastVoteButtons.forEach(btn => {
                 btn.disabled = true;
                 if (btn.dataset.model === model) {
@@ -1812,7 +1718,6 @@
                 }
             });
             
-            // Send vote to server
             fetch('/api/conversational/vote', {
                 method: 'POST',
                 headers: {
@@ -1832,38 +1737,30 @@
                 return response.json();
             })
             .then(data => {
-                // Hide loaders
                 podcastVoteButtons.forEach(btn => {
                     btn.querySelector('.vote-loader').style.display = 'none';
                     
-                    // Highlight the selected button
                     if (btn.dataset.model === model) {
                         btn.classList.add('selected');
                     }
                 });
                 
-                // Store model names from vote response
                 podcastModelNames.a = data.names.a;
                 podcastModelNames.b = data.names.b;
                 
-                // Show model names after voting
-                const modelNameDisplays = podcastPlayerContainer.querySelectorAll('.model-name-display');
+                modelNameDisplays = podcastPlayerContainer.querySelectorAll('.model-name-display');
                 modelNameDisplays[0].textContent = data.names.a ? `(${data.names.a})` : '';
                 modelNameDisplays[1].textContent = data.names.b ? `(${data.names.b})` : '';
                 
-                // Show vote results
                 chosenModelNameElement.textContent = data.chosen_model.name;
                 rejectedModelNameElement.textContent = data.rejected_model.name;
                 podcastVoteResults.style.display = 'block';
                 
-                // Show next round button
                 podcastNextRoundContainer.style.display = 'block';
                 
-                // Show success toast
                 openToast("Vote recorded successfully!", "success");
             })
             .catch(error => {
-                // Re-enable vote buttons
                 podcastVoteButtons.forEach(btn => {
                     btn.disabled = false;
                     btn.querySelector('.vote-loader').style.display = 'none';
@@ -1874,66 +1771,50 @@
             });
         }
         
-        // Reset podcast UI to initial state
         function resetPodcastState() {
-            // Hide players, results, and next round button
             podcastPlayerContainer.style.display = 'none';
             podcastVoteResults.style.display = 'none';
             podcastNextRoundContainer.style.display = 'none';
             
-            // Reset vote buttons
             podcastVoteButtons.forEach(btn => {
                 btn.disabled = true;
                 btn.classList.remove('selected');
                 btn.querySelector('.vote-loader').style.display = 'none';
             });
             
-            // Clear model name displays
-            const modelNameDisplays = podcastPlayerContainer.querySelectorAll('.model-name-display');
+            modelNameDisplays = podcastPlayerContainer.querySelectorAll('.model-name-display');
             modelNameDisplays.forEach(display => {
                 display.textContent = '';
             });
             
-            // Stop any playing audio
             if (podcastWavePlayers.a) podcastWavePlayers.a.stop();
             if (podcastWavePlayers.b) podcastWavePlayers.b.stop();
             
-            // Reset session
             currentPodcastSessionId = null;
             
-            // Reset the flag for both samples played
             bothPodcastSamplesPlayed = false;
         }
         
-        // Add keyboard shortcut listeners for podcast voting
         document.addEventListener('keydown', function(e) {
-            // Check if we're in the podcast tab and it's active
             const podcastTab = document.getElementById('conversational-tab');
             if (!podcastTab.classList.contains('active')) return;
             
-            // --- Shortcut logic based on current state ---
             const isScriptEditorVisible = podcastPlayerContainer.style.display === 'none' && podcastLoadingContainer.style.display === 'none';
             const isPodcastPlaybackVisible = podcastPlayerContainer.style.display !== 'none';
             const isPodcastNextRoundVisible = podcastNextRoundContainer.style.display === 'block';
 
-            // Only process if specific input fields are not focused
             const activeElementTag = document.activeElement.tagName;
             const isInputFocused = activeElementTag === 'INPUT' || activeElementTag === 'TEXTAREA';
 
-            // Handle adding new line shortcut separately if input is focused
             if (isInputFocused && e.key === 'Enter' && (e.altKey || e.ctrlKey)) {
-                 // Already handled by input's keydown listener, prevent double action
                  return;
             }
 
-            // Ignore other shortcuts if any input/textarea is focused
             if (isInputFocused) {
                  return;
             }
 
-            // Global shortcuts (when not focused on input)
-             if (e.key.toLowerCase() === 'r' && isScriptEditorVisible) {
-                 // Only trigger random if not trying to reload (Ctrl+R or Cmd+R)
+            if (e.key.toLowerCase() === 'r' && isScriptEditorVisible) {
                 if (!e.ctrlKey && !e.metaKey) {
                     e.preventDefault();
                     loadRandomScript();
@@ -1942,41 +1823,36 @@
                  e.preventDefault();
                  generatePodcast();
             } else if (e.key.toLowerCase() === 'n' && isScriptEditorVisible) {
-                 // 'N' for New Random Podcast (only when script editor is visible)
                 if (!e.ctrlKey && !e.metaKey) {
                     e.preventDefault();
-                    loadRandomScript(); // Get random script
-                    // Add a slight delay before generating
+                    loadRandomScript();
                     setTimeout(() => {
-                        generatePodcast(); // Generate the random script
+                        generatePodcast();
                     }, 50);
                 }
             }
 
-            // Playback/Voting shortcuts (only when players are visible)
             else if (isPodcastPlaybackVisible) {
-                 if (e.key === ' ') { // Space to play/pause
+                if (e.key === ' ') {
                     e.preventDefault();
-                    // If A is playing, toggle A, else if B is playing, toggle B, else play A
                     if (podcastWavePlayers.a && podcastWavePlayers.a.isPlaying) {
                         podcastWavePlayers.a.togglePlayPause();
                     } else if (podcastWavePlayers.b && podcastWavePlayers.b.isPlaying) {
                         podcastWavePlayers.b.togglePlayPause();
                     } else if (podcastWavePlayers.a) {
-                        // If neither is playing, prefer playing A if it hasn't finished, else B
                         if (podcastWavePlayers.a.wavesurfer.getCurrentTime() < podcastWavePlayers.a.wavesurfer.getDuration()) {
                              podcastWavePlayers.a.play();
                         } else if (podcastWavePlayers.b) {
                              podcastWavePlayers.b.play();
                         }
                     }
-                } else if (e.key.toLowerCase() === 'a') { // Vote A
+                } else if (e.key.toLowerCase() === 'a') {
                     if (bothPodcastSamplesPlayed && !podcastVoteButtons[0].disabled) {
                         handlePodcastVote('a');
                     } else if (!bothPodcastSamplesPlayed) {
                         openToast("Please listen to both audio samples before voting", "info");
                     }
-                } else if (e.key.toLowerCase() === 'b') { // Vote B
+                } else if (e.key.toLowerCase() === 'b') {
                     if (bothPodcastSamplesPlayed && !podcastVoteButtons[1].disabled) {
                         handlePodcastVote('b');
                     } else if (!bothPodcastSamplesPlayed) {
@@ -1985,7 +1861,6 @@
                 }
             }
 
-            // Next Round shortcut (only when next round button is visible)
             else if (isPodcastNextRoundVisible && e.key.toLowerCase() === 'n') {
                  if (!e.ctrlKey && !e.metaKey) {
                      e.preventDefault();
@@ -1994,7 +1869,6 @@
             }
         });
         
-        // Event listeners
         addLineBtn.addEventListener('click', function() {
             addPodcastLine();
         });
@@ -2007,7 +1881,6 @@
             generatePodcast();
         });
         
-        // Add event listeners to vote buttons
         podcastVoteButtons.forEach(btn => {
             btn.addEventListener('click', function() {
                 if (bothPodcastSamplesPlayed) {
@@ -2019,10 +1892,8 @@
             });
         });
         
-        // Add event listener for next round button
         podcastNextRoundBtn.addEventListener('click', resetPodcastState);
         
-        // Initialize with 2 empty lines
         initializePodcastLines();
     });
 </script>
