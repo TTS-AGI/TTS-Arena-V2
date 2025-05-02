@@ -189,9 +189,6 @@
     </div>
 </div>
 
-<!-- Hidden element to store fallback sentences data -->
-<div id="fallback-sentences-data" data-sentences="{{ harvard_sentences | tojson | safe }}" style="display: none;"></div>
-
 {% endblock %}
 
 {% block extra_head %}
@@ -1027,19 +1024,9 @@
             });
         });
         
-        // Fallback random text options (if cache is unavailable)
-        let fallbackRandomTexts = [];
-        try {
-            const dataElement = document.getElementById('fallback-sentences-data');
-            if (dataElement && dataElement.dataset.sentences) {
-                fallbackRandomTexts = JSON.parse(dataElement.dataset.sentences);
-            } else {
-                 console.error("Fallback sentences data element not found or empty.");
-            }
-        } catch (e) {
-            console.error("Error parsing fallback sentences from data attribute:", e);
-            // fallbackRandomTexts remains an empty array if parsing fails
-        }
+        // Load fallback sentences directly from Flask variable (JSON string)
+        // Note: This might cause linter errors, but JSON is JS-compatible.
+        const fallbackRandomTexts = JSON.parse({{ harvard_sentences | tojson | safe }});
         
         // Fetch cached sentences on load
         function fetchCachedSentences() {
