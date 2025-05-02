@@ -276,6 +276,7 @@ def verify_turnstile():
 
 with open("harvard_sentences.txt", "r") as f:
     harvard_sentences = f.readlines()
+    random.shuffle(harvard_sentences)
 
 @app.route("/")
 def arena():
