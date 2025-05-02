@@ -188,6 +188,10 @@
         </div>
     </div>
 </div>
+
+<!-- Hidden element to store fallback sentences data -->
+<div id="fallback-sentences-data" data-sentences="{{ harvard_sentences | tojson | safe }}" style="display: none;"></div>
+
 {% endblock %}
 
 {% block extra_head %}
@@ -915,10 +919,6 @@
             border-color: var(--border-color);
         }
         
-        .random-script-btn:hover {
-            background-color: rgba(255, 255, 255, 0.1);
-        }
-        
         .line-input {
             background-color: var(--light-gray);
             color: var(--text-color);
@@ -1015,6 +1015,7 @@
         let currentSessionId = null;
         let modelNames = { a: '', b: '' };
         let wavePlayers = { a: null, b: null };
+        let cachedSentences = []; // To store sentences available in cache
         
         // Initialize WavePlayers with mobile settings
         wavePlayerContainers.forEach(container => {
@@ -1026,8 +1027,33 @@
             });
         });
         
-        // Random text options
-        const randomTexts = {{ harvard_sentences|safe }};
+        // Fallback random text options (if cache is unavailable)
+        let fallbackRandomTexts = [];
+        try {
+            const dataElement = document.getElementById('fallback-sentences-data');
+            if (dataElement && dataElement.dataset.sentences) {
+                fallbackRandomTexts = JSON.parse(dataElement.dataset.sentences);
+            } else {
+                 console.error("Fallback sentences data element not found or empty.");
+            }
+        } catch (e) {
+            console.error("Error parsing fallback sentences from data attribute:", e);
+            // fallbackRandomTexts remains an empty array if parsing fails
+        }
+        
+        // Fetch cached sentences on load
+        function fetchCachedSentences() {
+            fetch('/api/tts/cached-sentences')
+                .then(response => response.ok ? response.json() : Promise.reject('Failed to fetch cached sentences'))
+                .then(data => {
+                    cachedSentences = data;
+                    console.log(`Fetched ${cachedSentences.length} cached sentences.`);
+                })
+                .catch(error => {
+                    console.error('Error fetching cached sentences:', error);
+                    // Keep cachedSentences as empty array, fallback will be used
+                });
+        }
         
         // Check URL hash for direct tab access
         function checkHashAndSetTab() {
@@ -1284,9 +1310,23 @@
         }
         
         function handleRandom() {
-            // Select a random text from the array
-            const randomText = randomTexts[Math.floor(Math.random() * randomTexts.length)];
-            textInput.value = randomText;
+            let selectedText = '';
+            if (cachedSentences && cachedSentences.length > 0) {
+                // Select a random text from the cache
+                selectedText = cachedSentences[Math.floor(Math.random() * cachedSentences.length)];
+                console.log("Using random sentence from cache.");
+            } else {
+                // Fallback to the initial list if cache is empty or failed to load
+                console.log("Cache empty or unavailable, using random sentence from fallback list.");
+                if (fallbackRandomTexts && fallbackRandomTexts.length > 0) {
+                    selectedText = fallbackRandomTexts[Math.floor(Math.random() * fallbackRandomTexts.length)];
+                } else {
+                    // Absolute fallback if both cache and initial list fail
+                    openToast("No random sentences available.", "warning");
+                    return;
+                }
+            }
+            textInput.value = selectedText;
             textInput.focus();
         }
         
@@ -1366,6 +1406,9 @@
         
         // Add event listener for next round button
         nextRoundBtn.addEventListener('click', resetToInitialState);
+        
+        // Fetch cached sentences when the DOM is ready
+        fetchCachedSentences();
     });
 </script>
 
