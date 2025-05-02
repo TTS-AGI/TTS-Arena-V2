@@ -1324,8 +1324,8 @@
                 if (fallbackRandomTexts && fallbackRandomTexts.length > 0) {
                     selectedText = fallbackRandomTexts[Math.floor(Math.random() * fallbackRandomTexts.length)];
                 } else {
-                    // Absolute fallback if both cache and initial list fail
-                    openToast("No random sentences available.", "warning");
+                    // If fallback list is also empty, do nothing. Log an error.
+                    console.error("Both cached sentences and fallback sentences are unavailable.");
                     return;
                 }
             }
