@@ -274,10 +274,12 @@ def verify_turnstile():
         # Otherwise redirect back to turnstile page
         return redirect(url_for("turnstile_page", redirect_url=redirect_url))
 
+with open("harvard_sentences.txt", "r") as f:
+    harvard_sentences = f.readlines()
 
 @app.route("/")
 def arena():
-    return render_template("arena.html")
+    return render_template("arena.html", harvard_sentences=json.dumps(harvard_sentences))
 
 
 @app.route("/leaderboard")
