@@ -28,6 +28,10 @@
         <button type="submit" class="mobile-synth-btn">Synthesize</button>
     </form>
 
+    <div class="keyboard-hint">
+        Press <kbd>R</kbd> for random text, <kbd>Enter</kbd> to synthesize, <kbd>N</kbd> for random + synthesize
+    </div>
+
     <div class="loading-container" style="display: none;">
         <div class="loader-wrapper">
             <div class="loader-animation">
@@ -73,7 +77,7 @@
         </div>
 
         <div class="keyboard-hint">
-            Press <kbd>Space</kbd> to play/pause audio, <kbd>A</kbd> or <kbd>B</kbd> to vote after listening, <kbd>R</kbd> for random audio, <kbd>Enter</kbd> to generate
+            Press <kbd>Space</kbd> to play/pause audio, <kbd>A</kbd> or <kbd>B</kbd> to vote after listening
         </div>
     </div>
 
@@ -115,11 +119,11 @@
                 <!-- Script lines will be added here -->
             </div>
             
-            <button type="button" class="add-line-btn">+ Add Line</button>
-            
             <div class="keyboard-hint podcast-keyboard-hint">
-                Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> or <kbd>Alt</kbd>+<kbd>Enter</kbd> to add a new line
+                Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> or <kbd>Alt</kbd>+<kbd>Enter</kbd> to add a new line, <kbd>R</kbd> for random script, <kbd>Enter</kbd> to generate, <kbd>N</kbd> for random + generate
             </div>
+
+            <button type="button" class="add-line-btn">+ Add Line</button>
         </div>
         
         <div class="podcast-loading-container" style="display: none;">
@@ -167,7 +171,7 @@
             </div>
 
             <div class="keyboard-hint">
-                Press <kbd>Space</kbd> to play/pause audio, <kbd>A</kbd> or <kbd>B</kbd> to vote after listening, <kbd>R</kbd> for random audio, <kbd>Enter</kbd> to generate
+                Press <kbd>Space</kbd> to play/pause audio, <kbd>A</kbd> or <kbd>B</kbd> to vote after listening
             </div>
             
             <div class="podcast-vote-results vote-results" style="display: none;">
@@ -1345,39 +1349,46 @@
             const ttsTab = document.getElementById('tts-tab');
             if (!ttsTab.classList.contains('active')) return;
             
-            // Only process keyboard shortcuts if text input is not focused
+            // --- Shortcut logic based on current state ---
+            const isInputVisible = playersContainer.style.display === 'none' && loadingContainer.style.display === 'none';
+            const isPlaybackVisible = playersContainer.style.display !== 'none';
+            const isNextRoundVisible = nextRoundContainer.style.display === 'block';
+
+            // Ignore shortcuts if text input is focused
             if (document.activeElement === textInput) {
-                return;
+                // Allow Enter key if focused on text input and input is visible
+                if (e.key === 'Enter' && isInputVisible) {
+                    e.preventDefault();
+                    handleSynthesize();
+                }
+                return; // Don't process other shortcuts when input is focused
             }
-            
-            if (e.key.toLowerCase() === 'a') {
-                if (bothSamplesPlayed && !voteButtons[0].disabled) {
-                    handleVote('a');
-                } else if (playersContainer.style.display !== 'none' && !bothSamplesPlayed) {
-                    showListenToastMessage();
-                }
-            } else if (e.key.toLowerCase() === 'b') {
-                if (bothSamplesPlayed && !voteButtons[1].disabled) {
-                    handleVote('b');
-                } else if (playersContainer.style.display !== 'none' && !bothSamplesPlayed) {
-                    showListenToastMessage();
-                }
-            } else if (e.key.toLowerCase() === 'n') {
-                if (nextRoundContainer.style.display === 'block') {
-                    if (!e.ctrlKey && !e.metaKey) {
-                        e.preventDefault();
-                    }
-                    resetToInitialState();
-                }
-            } else if (e.key.toLowerCase() === 'r') {
-                // Only trigger random if not trying to reload (Ctrl+R or Cmd+R)
+
+            // Global shortcuts (when not focused on input)
+            if (e.key.toLowerCase() === 'r' && isInputVisible) {
+                 // Only trigger random if not trying to reload (Ctrl+R or Cmd+R)
                 if (!e.ctrlKey && !e.metaKey) {
                     e.preventDefault();
                     handleRandom();
                 }
-            } else if (e.key === ' ') {
-                // Space to play/pause current audio
-                if (playersContainer.style.display !== 'none') {
+            } else if (e.key === 'Enter' && isInputVisible) {
+                e.preventDefault();
+                handleSynthesize();
+            } else if (e.key.toLowerCase() === 'n' && isInputVisible) {
+                 // 'N' for New Random Round (only when input is visible)
+                if (!e.ctrlKey && !e.metaKey) {
+                    e.preventDefault();
+                    handleRandom(); // Get random text
+                    // Add a slight delay to ensure text input is populated before synthesizing
+                    setTimeout(() => {
+                        handleSynthesize(); // Synthesize the random text
+                    }, 50);
+                }
+            }
+
+            // Playback/Voting shortcuts (only when players are visible)
+            else if (isPlaybackVisible) {
+                if (e.key === ' ') { // Space to play/pause
                     e.preventDefault();
                     // If A is playing, toggle A, else if B is playing, toggle B, else play A
                     if (wavePlayers.a.isPlaying) {
@@ -1385,9 +1396,34 @@
                     } else if (wavePlayers.b.isPlaying) {
                         wavePlayers.b.togglePlayPause();
                     } else {
-                        wavePlayers.a.play();
+                        // If neither is playing, prefer playing A if it hasn't finished, else B
+                        if (wavePlayers.a.wavesurfer.getCurrentTime() < wavePlayers.a.wavesurfer.getDuration()) {
+                            wavePlayers.a.play();
+                        } else {
+                             wavePlayers.b.play();
+                        }
+                    }
+                } else if (e.key.toLowerCase() === 'a') { // Vote A
+                    if (bothSamplesPlayed && !voteButtons[0].disabled) {
+                        handleVote('a');
+                    } else if (!bothSamplesPlayed) {
+                        showListenToastMessage();
+                    }
+                } else if (e.key.toLowerCase() === 'b') { // Vote B
+                    if (bothSamplesPlayed && !voteButtons[1].disabled) {
+                        handleVote('b');
+                    } else if (!bothSamplesPlayed) {
+                        showListenToastMessage();
                     }
                 }
+            }
+
+            // Next Round shortcut (only when next round button is visible)
+            else if (isNextRoundVisible && e.key.toLowerCase() === 'n') {
+                if (!e.ctrlKey && !e.metaKey) {
+                    e.preventDefault();
+                }
+                resetToInitialState();
             }
         });
         
@@ -1875,34 +1911,51 @@
             const podcastTab = document.getElementById('conversational-tab');
             if (!podcastTab.classList.contains('active')) return;
             
-            // Only process if input fields are not focused
-            if (document.activeElement.tagName === 'INPUT' || 
-                document.activeElement.tagName === 'TEXTAREA') {
-                return;
+            // --- Shortcut logic based on current state ---
+            const isScriptEditorVisible = podcastPlayerContainer.style.display === 'none' && podcastLoadingContainer.style.display === 'none';
+            const isPodcastPlaybackVisible = podcastPlayerContainer.style.display !== 'none';
+            const isPodcastNextRoundVisible = podcastNextRoundContainer.style.display === 'block';
+
+            // Only process if specific input fields are not focused
+            const activeElementTag = document.activeElement.tagName;
+            const isInputFocused = activeElementTag === 'INPUT' || activeElementTag === 'TEXTAREA';
+
+            // Handle adding new line shortcut separately if input is focused
+            if (isInputFocused && e.key === 'Enter' && (e.altKey || e.ctrlKey)) {
+                 // Already handled by input's keydown listener, prevent double action
+                 return;
             }
-            
-            if (e.key.toLowerCase() === 'a') {
-                if (bothPodcastSamplesPlayed && !podcastVoteButtons[0].disabled) {
-                    handlePodcastVote('a');
-                } else if (podcastPlayerContainer.style.display !== 'none' && !bothPodcastSamplesPlayed) {
-                    openToast("Please listen to both audio samples before voting", "info");
+
+            // Ignore other shortcuts if any input/textarea is focused
+            if (isInputFocused) {
+                 return;
+            }
+
+            // Global shortcuts (when not focused on input)
+             if (e.key.toLowerCase() === 'r' && isScriptEditorVisible) {
+                 // Only trigger random if not trying to reload (Ctrl+R or Cmd+R)
+                if (!e.ctrlKey && !e.metaKey) {
+                    e.preventDefault();
+                    loadRandomScript();
                 }
-            } else if (e.key.toLowerCase() === 'b') {
-                if (bothPodcastSamplesPlayed && !podcastVoteButtons[1].disabled) {
-                    handlePodcastVote('b');
-                } else if (podcastPlayerContainer.style.display !== 'none' && !bothPodcastSamplesPlayed) {
-                    openToast("Please listen to both audio samples before voting", "info");
+            } else if (e.key === 'Enter' && isScriptEditorVisible) {
+                 e.preventDefault();
+                 generatePodcast();
+            } else if (e.key.toLowerCase() === 'n' && isScriptEditorVisible) {
+                 // 'N' for New Random Podcast (only when script editor is visible)
+                if (!e.ctrlKey && !e.metaKey) {
+                    e.preventDefault();
+                    loadRandomScript(); // Get random script
+                    // Add a slight delay before generating
+                    setTimeout(() => {
+                        generatePodcast(); // Generate the random script
+                    }, 50);
                 }
-            } else if (e.key.toLowerCase() === 'n') {
-                if (podcastNextRoundContainer.style.display === 'block') {
-                    if (!e.ctrlKey && !e.metaKey) {
-                        e.preventDefault();
-                    }
-                    resetPodcastState();
-                }
-            } else if (e.key === ' ') {
-                // Space to play/pause current audio
-                if (podcastPlayerContainer.style.display !== 'none') {
+            }
+
+            // Playback/Voting shortcuts (only when players are visible)
+            else if (isPodcastPlaybackVisible) {
+                 if (e.key === ' ') { // Space to play/pause
                     e.preventDefault();
                     // If A is playing, toggle A, else if B is playing, toggle B, else play A
                     if (podcastWavePlayers.a && podcastWavePlayers.a.isPlaying) {
@@ -1910,9 +1963,34 @@
                     } else if (podcastWavePlayers.b && podcastWavePlayers.b.isPlaying) {
                         podcastWavePlayers.b.togglePlayPause();
                     } else if (podcastWavePlayers.a) {
-                        podcastWavePlayers.a.play();
+                        // If neither is playing, prefer playing A if it hasn't finished, else B
+                        if (podcastWavePlayers.a.wavesurfer.getCurrentTime() < podcastWavePlayers.a.wavesurfer.getDuration()) {
+                             podcastWavePlayers.a.play();
+                        } else if (podcastWavePlayers.b) {
+                             podcastWavePlayers.b.play();
+                        }
+                    }
+                } else if (e.key.toLowerCase() === 'a') { // Vote A
+                    if (bothPodcastSamplesPlayed && !podcastVoteButtons[0].disabled) {
+                        handlePodcastVote('a');
+                    } else if (!bothPodcastSamplesPlayed) {
+                        openToast("Please listen to both audio samples before voting", "info");
+                    }
+                } else if (e.key.toLowerCase() === 'b') { // Vote B
+                    if (bothPodcastSamplesPlayed && !podcastVoteButtons[1].disabled) {
+                        handlePodcastVote('b');
+                    } else if (!bothPodcastSamplesPlayed) {
+                        openToast("Please listen to both audio samples before voting", "info");
                     }
                 }
+            }
+
+            // Next Round shortcut (only when next round button is visible)
+            else if (isPodcastNextRoundVisible && e.key.toLowerCase() === 'n') {
+                 if (!e.ctrlKey && !e.metaKey) {
+                     e.preventDefault();
+                 }
+                 resetPodcastState();
             }
         });
         
