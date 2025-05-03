@@ -1103,65 +1103,150 @@ def setup_periodic_tasks():
                 app.logger.error(f"Error uploading database to {database_repo_id}: {str(e)}")
 
     def sync_preferences_data():
-        """Zips and uploads preference data folders to HF dataset"""
+        """Zips and uploads preference data folders in batches to HF dataset"""
         with app.app_context(): # Ensure app context for logging
             if not os.path.isdir(votes_dir):
-                # app.logger.info(f"Votes directory '{votes_dir}' not found, skipping preference sync.")
                 return # Don't log every 5 mins if dir doesn't exist yet
+
+            temp_batch_dir = None # Initialize to manage cleanup
+            temp_individual_zip_dir = None # Initialize for individual zips
+            local_batch_zip_path = None # Initialize for batch zip path
 
             try:
                 api = HfApi(token=os.getenv("HF_TOKEN"))
                 vote_uuids = [d for d in os.listdir(votes_dir) if os.path.isdir(os.path.join(votes_dir, d))]
 
                 if not vote_uuids:
-                    # app.logger.info("No new preference data to upload.")
-                    return # Don't log every 5 mins if no new data
+                    return # No data to process
 
-                uploaded_count = 0
+                app.logger.info(f"Found {len(vote_uuids)} vote directories to process.")
+
+                # Create temporary directories
+                temp_batch_dir = tempfile.mkdtemp(prefix="hf_batch_")
+                temp_individual_zip_dir = tempfile.mkdtemp(prefix="hf_indiv_zips_")
+                app.logger.debug(f"Created temp directories: {temp_batch_dir}, {temp_individual_zip_dir}")
+
+                processed_vote_dirs = []
+                individual_zips_in_batch = []
+
+                # 1. Create individual zips and move them to the batch directory
                 for vote_uuid in vote_uuids:
                     dir_path = os.path.join(votes_dir, vote_uuid)
-                    zip_base_path = os.path.join(votes_dir, vote_uuid) # Name zip file same as folder
-                    zip_path = f"{zip_base_path}.zip"
+                    individual_zip_base_path = os.path.join(temp_individual_zip_dir, vote_uuid)
+                    individual_zip_path = f"{individual_zip_base_path}.zip"
 
                     try:
-                        # Create zip archive
-                        shutil.make_archive(zip_base_path, 'zip', dir_path)
-                        app.logger.info(f"Created zip archive: {zip_path}")
+                        shutil.make_archive(individual_zip_base_path, 'zip', dir_path)
+                        app.logger.debug(f"Created individual zip: {individual_zip_path}")
 
-                        # Upload zip file
-                        api.upload_file(
-                            path_or_fileobj=zip_path,
-                            path_in_repo=f"votes/{year}/{month}/{vote_uuid}.zip",
-                            repo_id=preferences_repo_id,
-                            repo_type="dataset",
-                            commit_message=f"Add preference data {vote_uuid}"
-                        )
-                        app.logger.info(f"Successfully uploaded {zip_path} to {preferences_repo_id}")
-                        uploaded_count += 1
+                        # Move the created zip into the batch directory
+                        final_individual_zip_path = os.path.join(temp_batch_dir, f"{vote_uuid}.zip")
+                        shutil.move(individual_zip_path, final_individual_zip_path)
+                        app.logger.debug(f"Moved individual zip to batch dir: {final_individual_zip_path}")
 
-                        # Cleanup local files after successful upload
-                        try:
-                            os.remove(zip_path)
-                            shutil.rmtree(dir_path)
-                            app.logger.info(f"Cleaned up local files: {zip_path} and {dir_path}")
-                        except OSError as e:
-                            app.logger.error(f"Error cleaning up files for {vote_uuid}: {str(e)}")
+                        processed_vote_dirs.append(dir_path) # Mark original dir for later cleanup
+                        individual_zips_in_batch.append(final_individual_zip_path)
 
-                    except Exception as upload_err:
-                        app.logger.error(f"Error processing or uploading preference data for {vote_uuid}: {str(upload_err)}")
-                        # Optionally remove zip if it exists but upload failed
-                        if os.path.exists(zip_path):
-                             try:
-                                 os.remove(zip_path)
-                             except OSError as e:
-                                 app.logger.error(f"Error removing zip file after failed upload {zip_path}: {str(e)}")
-                        # Keep the original folder for the next attempt
+                    except Exception as zip_err:
+                        app.logger.error(f"Error creating or moving zip for {vote_uuid}: {str(zip_err)}")
+                        # Clean up partial zip if it exists
+                        if os.path.exists(individual_zip_path):
+                            try:
+                                os.remove(individual_zip_path)
+                            except OSError:
+                                pass
+                        # Continue processing other votes
 
-                if uploaded_count > 0:
-                    app.logger.info(f"Finished preference data sync. Uploaded {uploaded_count} new entries.")
+                # Clean up the temporary dir used for creating individual zips
+                shutil.rmtree(temp_individual_zip_dir)
+                temp_individual_zip_dir = None # Mark as cleaned
+                app.logger.debug("Cleaned up temporary individual zip directory.")
+
+                if not individual_zips_in_batch:
+                    app.logger.warning("No individual zips were successfully created for batching.")
+                    # Clean up batch dir if it's empty or only contains failed attempts
+                    if temp_batch_dir and os.path.exists(temp_batch_dir):
+                         shutil.rmtree(temp_batch_dir)
+                         temp_batch_dir = None
+                    return
+
+                # 2. Create the batch zip file
+                batch_timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                batch_uuid_short = str(uuid.uuid4())[:8]
+                batch_zip_filename = f"{batch_timestamp}_batch_{batch_uuid_short}.zip"
+                # Create batch zip in a standard temp location first
+                local_batch_zip_base = os.path.join(tempfile.gettempdir(), batch_zip_filename.replace('.zip', ''))
+                local_batch_zip_path = f"{local_batch_zip_base}.zip"
+
+                app.logger.info(f"Creating batch zip: {local_batch_zip_path} with {len(individual_zips_in_batch)} individual zips.")
+                shutil.make_archive(local_batch_zip_base, 'zip', temp_batch_dir)
+                app.logger.info(f"Batch zip created successfully: {local_batch_zip_path}")
+
+                # 3. Upload the batch zip file
+                hf_repo_path = f"votes/{year}/{month}/{batch_zip_filename}"
+                app.logger.info(f"Uploading batch zip to HF Hub: {preferences_repo_id}/{hf_repo_path}")
+
+                api.upload_file(
+                    path_or_fileobj=local_batch_zip_path,
+                    path_in_repo=hf_repo_path,
+                    repo_id=preferences_repo_id,
+                    repo_type="dataset",
+                    commit_message=f"Add batch preference data {batch_zip_filename} ({len(individual_zips_in_batch)} votes)"
+                )
+                app.logger.info(f"Successfully uploaded batch {batch_zip_filename} to {preferences_repo_id}")
+
+                # 4. Cleanup after successful upload
+                app.logger.info("Cleaning up local files after successful upload.")
+                # Remove original vote directories that were successfully zipped and uploaded
+                for dir_path in processed_vote_dirs:
+                    try:
+                        shutil.rmtree(dir_path)
+                        app.logger.debug(f"Removed original vote directory: {dir_path}")
+                    except OSError as e:
+                        app.logger.error(f"Error removing processed vote directory {dir_path}: {str(e)}")
+
+                # Remove the temporary batch directory (containing the individual zips)
+                shutil.rmtree(temp_batch_dir)
+                temp_batch_dir = None
+                app.logger.debug("Removed temporary batch directory.")
+
+                # Remove the local batch zip file
+                os.remove(local_batch_zip_path)
+                local_batch_zip_path = None
+                app.logger.debug("Removed local batch zip file.")
+
+                app.logger.info(f"Finished preference data sync. Uploaded batch {batch_zip_filename}.")
 
             except Exception as e:
-                app.logger.error(f"General error during preference data sync: {str(e)}")
+                app.logger.error(f"Error during preference data batch sync: {str(e)}", exc_info=True)
+                # If upload failed, the local batch zip might exist, clean it up.
+                if local_batch_zip_path and os.path.exists(local_batch_zip_path):
+                    try:
+                        os.remove(local_batch_zip_path)
+                        app.logger.debug("Cleaned up local batch zip after failed upload.")
+                    except OSError as clean_err:
+                        app.logger.error(f"Error cleaning up batch zip after failed upload: {clean_err}")
+                # Do NOT remove temp_batch_dir if it exists; its contents will be retried next time.
+                # Do NOT remove original vote directories if upload failed.
+
+            finally:
+                # Final cleanup for temporary directories in case of unexpected exits
+                if temp_individual_zip_dir and os.path.exists(temp_individual_zip_dir):
+                    try:
+                        shutil.rmtree(temp_individual_zip_dir)
+                    except Exception as final_clean_err:
+                        app.logger.error(f"Error in final cleanup (indiv zips): {final_clean_err}")
+                # Only clean up batch dir in finally block if it *wasn't* kept intentionally after upload failure
+                if temp_batch_dir and os.path.exists(temp_batch_dir):
+                     # Check if an upload attempt happened and failed
+                     upload_failed = 'e' in locals() and isinstance(e, Exception) # Crude check if exception occurred
+                     if not upload_failed: # If no upload error or upload succeeded, clean up
+                        try:
+                            shutil.rmtree(temp_batch_dir)
+                        except Exception as final_clean_err:
+                            app.logger.error(f"Error in final cleanup (batch dir): {final_clean_err}")
+                     else:
+                         app.logger.warning("Keeping temporary batch directory due to upload failure for next attempt.")
 
 
     # Schedule periodic tasks
