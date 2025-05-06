@@ -423,6 +423,7 @@ def insert_initial_models():
             name="Cartesia Sonic 2",
             model_type=ModelType.TTS,
             is_open=False,
+            is_active=False, # ran out of credits
             model_url="https://cartesia.ai/",
         ),
         Model(
