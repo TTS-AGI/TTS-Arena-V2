@@ -117,7 +117,8 @@ TTS_CACHE_SIZE = int(os.getenv("TTS_CACHE_SIZE", "10"))
 CACHE_AUDIO_SUBDIR = "cache"
 tts_cache = {} # sentence -> {model_a, model_b, audio_a, audio_b, created_at}
 tts_cache_lock = threading.Lock()
-cache_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix='CacheReplacer')
+# Increased max_workers to 8 for concurrent generation/refill
+cache_executor = ThreadPoolExecutor(max_workers=8, thread_name_prefix='CacheReplacer')
 all_harvard_sentences = [] # Keep the full list available
 
 # Create temp directories
@@ -535,8 +536,21 @@ def generate_tts():
             }
             app.tts_sessions[session_id] = session_data_from_cache
 
-            # Trigger background task to replace the used cache entry
-            cache_executor.submit(_generate_cache_entry_task, None) # Pass None to signal replacement
+            # --- Trigger background tasks to refill the cache ---
+            # Calculate how many slots need refilling
+            current_cache_size = len(tts_cache) # Size *before* adding potentially new items
+            needed_refills = TTS_CACHE_SIZE - current_cache_size
+            # Limit concurrent refills to 8 or the actual need
+            refills_to_submit = min(needed_refills, 8)
+
+            if refills_to_submit > 0:
+                app.logger.info(f"Cache hit: Submitting {refills_to_submit} background task(s) to refill cache (current size: {current_cache_size}, target: {TTS_CACHE_SIZE}).")
+                for _ in range(refills_to_submit):
+                     # Pass None to signal replacement selection within the task
+                    cache_executor.submit(_generate_cache_entry_task, None)
+            else:
+                app.logger.info(f"Cache hit: Cache is already full or at target size ({current_cache_size}/{TTS_CACHE_SIZE}). No refill tasks submitted.")
+            # --- End Refill Trigger ---
 
     if cache_hit and session_data_from_cache:
         # Return response using cached data
