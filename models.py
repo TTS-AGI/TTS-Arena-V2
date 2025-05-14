@@ -431,6 +431,7 @@ def insert_initial_models():
             name="Spark TTS",
             model_type=ModelType.TTS,
             is_open=False,
+            is_active=False, # API stopped working
             model_url="https://github.com/SparkAudio/Spark-TTS",
         ),
         Model(
