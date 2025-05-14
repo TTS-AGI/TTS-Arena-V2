@@ -71,8 +71,15 @@ model_mapping = {
         "provider": "megatts3",
         "model": "megatts3",
     },
+    "minimax-02-hd": {
+        "provider": "minimax",
+        "model": "speech-02-hd",
+    },
+    "minimax-02-turbo": {
+        "provider": "minimax",
+        "model": "speech-02-turbo",
+    },
 }
-
 url = "https://tts-agi-tts-router-v2.hf.space/tts"
 headers = {
     "accept": "application/json",
