@@ -4,6 +4,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 import threading # Added for locking
+from sqlalchemy import or_ # Added for vote counting query
 
 year = datetime.now().year
 month = datetime.now().month
@@ -117,6 +118,7 @@ TTS_CACHE_SIZE = int(os.getenv("TTS_CACHE_SIZE", "10"))
 CACHE_AUDIO_SUBDIR = "cache"
 tts_cache = {} # sentence -> {model_a, model_b, audio_a, audio_b, created_at}
 tts_cache_lock = threading.Lock()
+SMOOTHING_FACTOR_MODEL_SELECTION = 500 # For weighted random model selection
 # Increased max_workers to 8 for concurrent generation/refill
 cache_executor = ThreadPoolExecutor(max_workers=8, thread_name_prefix='CacheReplacer')
 all_harvard_sentences = [] # Keep the full list available
@@ -433,7 +435,7 @@ def _generate_cache_entry_task(sentence):
             return
 
         try:
-            models = random.sample(available_models, 2)
+            models = get_weighted_random_models(available_models, 2, ModelType.TTS)
             model_a_id = models[0].id
             model_b_id = models[1].id
 
@@ -574,7 +576,7 @@ def generate_tts():
     if len(available_models) < 2:
         return jsonify({"error": "Not enough TTS models available"}), 500
 
-    selected_models = random.sample(available_models, 2)
+    selected_models = get_weighted_random_models(available_models, 2, ModelType.TTS)
 
     try:
         audio_files = []
@@ -840,7 +842,7 @@ def generate_podcast():
     if len(available_models) < 2:
         return jsonify({"error": "Not enough conversational models available"}), 500
 
-    selected_models = random.sample(available_models, 2)
+    selected_models = get_weighted_random_models(available_models, 2, ModelType.CONVERSATIONAL)
 
     try:
         # Generate audio for both models concurrently
@@ -1304,6 +1306,58 @@ def get_cached_sentences():
     with tts_cache_lock:
         cached_keys = list(tts_cache.keys())
     return jsonify(cached_keys)
+
+
+def get_weighted_random_models(
+    applicable_models: list[Model], num_to_select: int, model_type: ModelType
+) -> list[Model]:
+    """
+    Selects a specified number of models randomly from a list of applicable_models,
+    weighting models with fewer votes higher. A smoothing factor is used to ensure
+    the preference is slight and to prevent models with zero votes from being
+    overwhelmingly favored. Models are selected without replacement.
+
+    Assumes len(applicable_models) >= num_to_select, which should be checked by the caller.
+    """
+    model_votes_counts = {}
+    for model in applicable_models:
+        votes = (
+            Vote.query.filter(Vote.model_type == model_type)
+            .filter(or_(Vote.chosen_model_id == model.id, Vote.rejected_model_id == model.id))
+            .count()
+        )
+        model_votes_counts[model.id] = votes
+
+    weights = [
+        1.0 / (model_votes_counts[model.id] + SMOOTHING_FACTOR_MODEL_SELECTION)
+        for model in applicable_models
+    ]
+
+    selected_models_list = []
+    # Create copies to modify during selection process
+    current_candidates = list(applicable_models)
+    current_weights = list(weights)
+
+    # Assumes num_to_select is positive and less than or equal to len(current_candidates)
+    # Callers should ensure this (e.g., len(available_models) >= 2).
+    for _ in range(num_to_select):
+        if not current_candidates: # Safety break
+            app.logger.warning("Not enough candidates left for weighted selection.")
+            break
+        
+        chosen_model = random.choices(current_candidates, weights=current_weights, k=1)[0]
+        selected_models_list.append(chosen_model)
+
+        try:
+            idx_to_remove = current_candidates.index(chosen_model)
+            current_candidates.pop(idx_to_remove)
+            current_weights.pop(idx_to_remove)
+        except ValueError:
+            # This should ideally not happen if chosen_model came from current_candidates.
+            app.logger.error(f"Error removing model {chosen_model.id} from weighted selection candidates.")
+            break # Avoid potential issues
+
+    return selected_models_list
 
 
 if __name__ == "__main__":
