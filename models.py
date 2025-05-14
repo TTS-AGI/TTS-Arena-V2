@@ -484,6 +484,20 @@ def insert_initial_models():
             is_open=True,
             model_url="https://github.com/bytedance/MegaTTS3",
         ),
+        Model(
+            id="minimax-02-hd",
+            name="Hailuo Speech 02 HD",
+            model_type=ModelType.TTS,
+            is_open=True,
+            model_url="http://minimax.io/",
+        ),
+        Model(
+            id="minimax-02-turbo",
+            name="Hailuo Speech 02 Turbo",
+            model_type=ModelType.TTS,
+            is_open=True,
+            model_url="http://minimax.io/",
+        ),
     ]
     conversational_models = [
         Model(
