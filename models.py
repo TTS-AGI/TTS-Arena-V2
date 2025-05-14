@@ -488,14 +488,14 @@ def insert_initial_models():
             id="minimax-02-hd",
             name="Hailuo Speech 02 HD",
             model_type=ModelType.TTS,
-            is_open=True,
+            is_open=False,
             model_url="http://minimax.io/",
         ),
         Model(
             id="minimax-02-turbo",
             name="Hailuo Speech 02 Turbo",
             model_type=ModelType.TTS,
-            is_open=True,
+            is_open=False,
             model_url="http://minimax.io/",
         ),
     ]
