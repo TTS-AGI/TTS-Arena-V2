@@ -1323,7 +1323,7 @@ def get_weighted_random_models(
     for model in applicable_models:
         votes = (
             Vote.query.filter(Vote.model_type == model_type)
-            .filter(or_(Vote.chosen_model_id == model.id, Vote.rejected_model_id == model.id))
+            .filter(or_(Vote.model_chosen == model.id, Vote.model_rejected == model.id))
             .count()
         )
         model_votes_counts[model.id] = votes
