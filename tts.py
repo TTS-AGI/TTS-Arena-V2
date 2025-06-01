@@ -79,6 +79,10 @@ model_mapping = {
         "provider": "minimax",
         "model": "speech-02-turbo",
     },
+    "lanternfish-1": {
+        "provider": "lanternfish",
+        "model": "lanternfish-1",
+    },
 }
 url = "https://tts-agi-tts-router-v2.hf.space/tts"
 headers = {
