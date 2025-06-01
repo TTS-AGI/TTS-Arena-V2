@@ -498,6 +498,12 @@ def insert_initial_models():
             is_open=False,
             model_url="http://minimax.io/",
         ),
+        Model(
+            id="lanternfish-1",
+            name="Lanternfish",
+            model_type=ModelType.TTS,
+            is_open=False,
+        ),
     ]
     conversational_models = [
         Model(
