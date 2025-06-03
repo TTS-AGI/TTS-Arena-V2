@@ -500,9 +500,10 @@ def insert_initial_models():
         ),
         Model(
             id="lanternfish-1",
-            name="Lanternfish",
+            name="OpenAudio S1",
             model_type=ModelType.TTS,
             is_open=False,
+            model_url="https://fish.audio/",
         ),
     ]
     conversational_models = [
