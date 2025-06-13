@@ -2,7 +2,8 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from datetime import datetime
 import math
-from sqlalchemy import func
+from sqlalchemy import func, text
+import logging
 
 db = SQLAlchemy()
 
@@ -12,6 +13,7 @@ class User(db.Model, UserMixin):
     username = db.Column(db.String(100), unique=True, nullable=False)
     hf_id = db.Column(db.String(100), unique=True, nullable=False)
     join_date = db.Column(db.DateTime, default=datetime.utcnow)
+    hf_account_created = db.Column(db.DateTime, nullable=True)  # HF account creation date
     votes = db.relationship("Vote", backref="user", lazy=True)
     show_in_leaderboard = db.Column(db.Boolean, default=True)
 
@@ -63,6 +65,13 @@ class Vote(db.Model):
         db.String(100), db.ForeignKey("model.id"), nullable=False
     )
     model_type = db.Column(db.String(20), nullable=False)  # 'tts' or 'conversational'
+    
+    # New analytics columns - added with temporary checks for migration
+    session_duration_seconds = db.Column(db.Float, nullable=True)  # Time from generation to vote
+    ip_address_partial = db.Column(db.String(20), nullable=True)  # IP with last digits removed
+    user_agent = db.Column(db.String(500), nullable=True)  # Browser/device info
+    generation_date = db.Column(db.DateTime, nullable=True)  # When audio was generated
+    cache_hit = db.Column(db.Boolean, nullable=True)  # Whether generation was from cache
 
     chosen = db.relationship(
         "Model",
@@ -105,15 +114,49 @@ def calculate_elo_change(winner_elo, loser_elo, k_factor=32):
     return winner_new_elo, loser_new_elo
 
 
-def record_vote(user_id, text, chosen_model_id, rejected_model_id, model_type):
+def anonymize_ip_address(ip_address):
+    """
+    Remove the last 1-2 octets from an IP address for privacy compliance.
+    Examples:
+    - 192.168.1.100 -> 192.168.0.0
+    - 2001:db8::1 -> 2001:db8::
+    """
+    if not ip_address:
+        return None
+    
+    try:
+        if ':' in ip_address:  # IPv6
+            # Keep first 4 groups, zero out the rest
+            parts = ip_address.split(':')
+            if len(parts) >= 4:
+                return ':'.join(parts[:4]) + '::'
+            return ip_address
+        else:  # IPv4
+            # Keep first 2 octets, zero out last 2
+            parts = ip_address.split('.')
+            if len(parts) == 4:
+                return f"{parts[0]}.{parts[1]}.0.0"
+            return ip_address
+    except Exception:
+        return None
+
+
+def record_vote(user_id, text, chosen_model_id, rejected_model_id, model_type, 
+                session_duration=None, ip_address=None, user_agent=None, 
+                generation_date=None, cache_hit=None):
     """Record a vote and update Elo ratings."""
     # Create the vote
     vote = Vote(
-        user_id=user_id,  # Can be None for anonymous votes
+        user_id=user_id,  # Required - user must be logged in to vote
         text=text,
         model_chosen=chosen_model_id,
         model_rejected=rejected_model_id,
         model_type=model_type,
+        session_duration_seconds=session_duration,
+        ip_address_partial=anonymize_ip_address(ip_address),
+        user_agent=user_agent[:500] if user_agent else None,  # Truncate if too long
+        generation_date=generation_date,
+        cache_hit=cache_hit,
     )
     db.session.add(vote)
     db.session.flush()  # Get the vote ID without committing
@@ -503,6 +546,7 @@ def insert_initial_models():
             name="OpenAudio S1",
             model_type=ModelType.TTS,
             is_open=False,
+            is_active=False, # NOTE: Waiting to receive a pool of voices
             model_url="https://fish.audio/",
         ),
     ]

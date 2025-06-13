@@ -1,0 +1,220 @@
+{% extends "admin/base.html" %}
+
+{% block extra_head %}
+{{ super() }}
+<style>
+    .admin-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 24px;
+        margin-bottom: 24px;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 16px;
+    }
+    
+    .stat-item {
+        text-align: center;
+        padding: 12px;
+        background-color: var(--secondary-color);
+        border-radius: var(--radius);
+    }
+    
+    .stat-value {
+        font-size: 24px;
+        font-weight: 600;
+        color: var(--primary-color);
+        margin-bottom: 4px;
+    }
+    
+    .stat-label {
+        font-size: 12px;
+        color: #666;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .badge-success {
+        background-color: #10b981;
+        color: white;
+    }
+    
+    .badge-warning {
+        background-color: #f59e0b;
+        color: white;
+    }
+    
+    @media (prefers-color-scheme: dark) {
+        .stat-item {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+        
+        .stat-label {
+            color: #999;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block admin_content %}
+<div class="admin-header">
+    <div class="admin-title">Analytics</div>
+</div>
+
+<div class="admin-grid">
+    <!-- Session Duration Statistics -->
+    <div class="admin-card">
+        <div class="admin-card-header">
+            <div class="admin-card-title">Session Duration</div>
+        </div>
+        <div class="admin-card-content">
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value">{{ analytics_stats.duration.avg }}s</div>
+                    <div class="stat-label">Average Duration</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ analytics_stats.duration.min }}s</div>
+                    <div class="stat-label">Minimum Duration</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ analytics_stats.duration.max }}s</div>
+                    <div class="stat-label">Maximum Duration</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ analytics_stats.duration.total }}</div>
+                    <div class="stat-label">Total Sessions</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cache Hit Statistics -->
+    <div class="admin-card">
+        <div class="admin-card-header">
+            <div class="admin-card-title">Cache Performance</div>
+        </div>
+        <div class="admin-card-content">
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value">{{ analytics_stats.cache.hits }}</div>
+                    <div class="stat-label">Cache Hits</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ analytics_stats.cache.misses }}</div>
+                    <div class="stat-label">Cache Misses</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">
+                        {% if analytics_stats.cache.total > 0 %}
+                            {{ "%.1f"|format((analytics_stats.cache.hits / analytics_stats.cache.total) * 100) }}%
+                        {% else %}
+                            0%
+                        {% endif %}
+                    </div>
+                    <div class="stat-label">Hit Rate</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Top IP Addresses -->
+<div class="admin-card">
+    <div class="admin-card-header">
+        <div class="admin-card-title">Top IP Address Regions (Anonymized)</div>
+    </div>
+    <div class="table-responsive">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>IP Range</th>
+                    <th>Vote Count</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ip_stat in analytics_stats.top_ips %}
+                <tr>
+                    <td>{{ ip_stat.ip }}</td>
+                    <td>{{ ip_stat.count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Browser Statistics -->
+<div class="admin-card">
+    <div class="admin-card-header">
+        <div class="admin-card-title">Browser/Device Statistics</div>
+    </div>
+    <div class="table-responsive">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Browser/Device</th>
+                    <th>Vote Count</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for browser_stat in analytics_stats.browsers %}
+                <tr>
+                    <td>{{ browser_stat.browser }}</td>
+                    <td>{{ browser_stat.count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Recent Votes with Analytics -->
+<div class="admin-card">
+    <div class="admin-card-header">
+        <div class="admin-card-title">Recent Votes with Analytics Data</div>
+    </div>
+    <div class="table-responsive">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Date</th>
+                    <th>User</th>
+                    <th>Type</th>
+                    <th>Duration (s)</th>
+                    <th>IP Range</th>
+                    <th>Cache Hit</th>
+                    <th>Chosen Model</th>
+                    <th>Rejected Model</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for vote in analytics_stats.recent_votes %}
+                <tr>
+                    <td>{{ vote.id }}</td>
+                    <td>{{ vote.vote_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>{{ vote.username or 'Anonymous' }}</td>
+                    <td>{{ vote.model_type }}</td>
+                    <td>{{ vote.duration }}</td>
+                    <td>{{ vote.ip }}</td>
+                    <td>
+                        {% if vote.cache_hit %}
+                            <span class="badge badge-success">Yes</span>
+                        {% else %}
+                            <span class="badge badge-warning">No</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ vote.chosen_model }}</td>
+                    <td>{{ vote.rejected_model }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %} 

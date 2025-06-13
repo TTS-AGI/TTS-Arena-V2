@@ -47,6 +47,7 @@ from flask_login import LoginManager, current_user
 from models import *
 from auth import auth, init_oauth, is_admin
 from admin import admin
+from security import is_vote_allowed, check_user_security_score
 import os
 from dotenv import load_dotenv
 from flask_limiter import Limiter
@@ -62,6 +63,20 @@ from flask_migrate import Migrate
 import requests
 import functools
 import time # Added for potential retries
+
+
+def get_client_ip():
+    """Get the client's IP address, handling proxies and load balancers."""
+    # Check for forwarded headers first (common with reverse proxies)
+    if request.headers.get('X-Forwarded-For'):
+        # X-Forwarded-For can contain multiple IPs, take the first one
+        return request.headers.get('X-Forwarded-For').split(',')[0].strip()
+    elif request.headers.get('X-Real-IP'):
+        return request.headers.get('X-Real-IP')
+    elif request.headers.get('CF-Connecting-IP'):  # Cloudflare
+        return request.headers.get('CF-Connecting-IP')
+    else:
+        return request.remote_addr
 
 
 # Load environment variables
@@ -509,6 +524,10 @@ def generate_tts():
     if app.config["TURNSTILE_ENABLED"] and not session.get("turnstile_verified"):
         return jsonify({"error": "Turnstile verification required"}), 403
 
+    # Require user to be logged in to generate audio
+    if not current_user.is_authenticated:
+        return jsonify({"error": "You must be logged in to generate audio"}), 401
+
     data = request.json
     text = data.get("text", "").strip() # Ensure text is stripped
 
@@ -535,6 +554,7 @@ def generate_tts():
                 "created_at": datetime.utcnow(),
                 "expires_at": datetime.utcnow() + timedelta(minutes=30),
                 "voted": False,
+                "cache_hit": True,
             }
             app.tts_sessions[session_id] = session_data_from_cache
 
@@ -618,6 +638,7 @@ def generate_tts():
             "created_at": datetime.utcnow(),
             "expires_at": datetime.utcnow() + timedelta(minutes=30),
             "voted": False,
+            "cache_hit": False,
         }
 
         # Return audio file paths and session
@@ -682,6 +703,18 @@ def submit_vote():
     if app.config["TURNSTILE_ENABLED"] and not session.get("turnstile_verified"):
         return jsonify({"error": "Turnstile verification required"}), 403
 
+    # Require user to be logged in to vote
+    if not current_user.is_authenticated:
+        return jsonify({"error": "You must be logged in to vote"}), 401
+
+    # Security checks for vote manipulation prevention
+    client_ip = get_client_ip()
+    vote_allowed, security_reason, security_score = is_vote_allowed(current_user.id, client_ip)
+    
+    if not vote_allowed:
+        app.logger.warning(f"Vote blocked for user {current_user.username} (ID: {current_user.id}): {security_reason} (Score: {security_score})")
+        return jsonify({"error": f"Vote not allowed: {security_reason}"}), 403
+
     data = request.json
     session_id = data.get("session_id")
     chosen_model_key = data.get("chosen_model")  # "a" or "b"
@@ -717,10 +750,25 @@ def submit_vote():
         session_data["audio_b"] if chosen_model_key == "a" else session_data["audio_a"]
     )
 
-    # Record vote in database
-    user_id = current_user.id if current_user.is_authenticated else None
+    # Calculate session duration and gather analytics data
+    vote_time = datetime.utcnow()
+    session_duration = (vote_time - session_data["created_at"]).total_seconds()
+    client_ip = get_client_ip()
+    user_agent = request.headers.get('User-Agent')
+    cache_hit = session_data.get("cache_hit", False)
+
+    # Record vote in database with analytics data
     vote, error = record_vote(
-        user_id, session_data["text"], chosen_id, rejected_id, ModelType.TTS
+        current_user.id, 
+        session_data["text"], 
+        chosen_id, 
+        rejected_id, 
+        ModelType.TTS,
+        session_duration=session_duration,
+        ip_address=client_ip,
+        user_agent=user_agent,
+        generation_date=session_data["created_at"],
+        cache_hit=cache_hit
     )
 
     if error:
@@ -747,7 +795,7 @@ def submit_vote():
             "rejected_model_id": rejected_model_obj.id if rejected_model_obj else "Unknown",
             "session_id": session_id,
             "timestamp": datetime.utcnow().isoformat(),
-            "username": current_user.username if current_user.is_authenticated else None,
+            "username": current_user.username,
             "model_type": "TTS"
         }
         with open(os.path.join(vote_dir, "metadata.json"), "w") as f:
@@ -806,6 +854,10 @@ def generate_podcast():
     # If verification not setup, handle it first
     if app.config["TURNSTILE_ENABLED"] and not session.get("turnstile_verified"):
         return jsonify({"error": "Turnstile verification required"}), 403
+
+    # Require user to be logged in to generate audio
+    if not current_user.is_authenticated:
+        return jsonify({"error": "You must be logged in to generate audio"}), 401
 
     data = request.json
     script = data.get("script")
@@ -885,6 +937,7 @@ def generate_podcast():
             "expires_at": datetime.utcnow() + timedelta(minutes=30),
             "voted": False,
             "script": script,
+            "cache_hit": False,  # Conversational is always generated on-demand
         }
 
         # Return audio file paths and session
@@ -939,6 +992,18 @@ def submit_podcast_vote():
     if app.config["TURNSTILE_ENABLED"] and not session.get("turnstile_verified"):
         return jsonify({"error": "Turnstile verification required"}), 403
 
+    # Require user to be logged in to vote
+    if not current_user.is_authenticated:
+        return jsonify({"error": "You must be logged in to vote"}), 401
+
+    # Security checks for vote manipulation prevention
+    client_ip = get_client_ip()
+    vote_allowed, security_reason, security_score = is_vote_allowed(current_user.id, client_ip)
+    
+    if not vote_allowed:
+        app.logger.warning(f"Conversational vote blocked for user {current_user.username} (ID: {current_user.id}): {security_reason} (Score: {security_score})")
+        return jsonify({"error": f"Vote not allowed: {security_reason}"}), 403
+
     data = request.json
     session_id = data.get("session_id")
     chosen_model_key = data.get("chosen_model")  # "a" or "b"
@@ -974,10 +1039,25 @@ def submit_podcast_vote():
         session_data["audio_b"] if chosen_model_key == "a" else session_data["audio_a"]
     )
 
-    # Record vote in database
-    user_id = current_user.id if current_user.is_authenticated else None
+    # Calculate session duration and gather analytics data
+    vote_time = datetime.utcnow()
+    session_duration = (vote_time - session_data["created_at"]).total_seconds()
+    client_ip = get_client_ip()
+    user_agent = request.headers.get('User-Agent')
+    cache_hit = session_data.get("cache_hit", False)
+
+    # Record vote in database with analytics data
     vote, error = record_vote(
-        user_id, session_data["text"], chosen_id, rejected_id, ModelType.CONVERSATIONAL
+        current_user.id, 
+        session_data["text"], 
+        chosen_id, 
+        rejected_id, 
+        ModelType.CONVERSATIONAL,
+        session_duration=session_duration,
+        ip_address=client_ip,
+        user_agent=user_agent,
+        generation_date=session_data["created_at"],
+        cache_hit=cache_hit
     )
 
     if error:
@@ -1004,7 +1084,7 @@ def submit_podcast_vote():
             "rejected_model_id": rejected_model_obj.id if rejected_model_obj else "Unknown",
             "session_id": session_id,
             "timestamp": datetime.utcnow().isoformat(),
-            "username": current_user.username if current_user.is_authenticated else None,
+            "username": current_user.username,
             "model_type": "CONVERSATIONAL"
         }
         with open(os.path.join(vote_dir, "metadata.json"), "w") as f:

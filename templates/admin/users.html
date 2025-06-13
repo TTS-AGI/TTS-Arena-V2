@@ -7,7 +7,13 @@
 
 <div class="admin-card">
     <div class="admin-card-header">
-        <div class="admin-card-title">All Users</div>
+        <div class="admin-card-title">All Users (Sorted by Security Score)</div>
+        <div class="admin-card-subtitle">
+            <span class="badge" style="background-color: #dc3545; color: white;">0-19: High Risk</span>
+            <span class="badge" style="background-color: #fd7e14; color: white;">20-39: Medium Risk</span>
+            <span class="badge" style="background-color: #ffc107; color: black;">40-69: Low Risk</span>
+            <span class="badge" style="background-color: #28a745; color: white;">70-100: Trusted</span>
+        </div>
     </div>
     <div class="table-responsive">
         <table class="admin-table">
@@ -17,17 +23,31 @@
                     <th>Username</th>
                     <th>HF ID</th>
                     <th>Join Date</th>
+                    <th>Security Score</th>
                     <th>Admin Status</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
-                {% for user in users %}
+                {% for user_data in users_with_scores %}
+                {% set user = user_data.user %}
+                {% set score = user_data.security_score %}
                 <tr>
                     <td>{{ user.id }}</td>
                     <td>{{ user.username }}</td>
                     <td>{{ user.hf_id }}</td>
-                    <td>{{ user.join_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>{{ user.join_date.strftime('%Y-%m-%d %H:%M') if user.join_date else 'N/A' }}</td>
+                    <td>
+                        {% if score < 20 %}
+                        <span class="badge" style="background-color: #dc3545; color: white;" title="High Risk - Votes may be blocked">{{ score }}/100</span>
+                        {% elif score < 40 %}
+                        <span class="badge" style="background-color: #fd7e14; color: white;" title="Medium Risk - Monitor closely">{{ score }}/100</span>
+                        {% elif score < 70 %}
+                        <span class="badge" style="background-color: #ffc107; color: black;" title="Low Risk - Normal user">{{ score }}/100</span>
+                        {% else %}
+                        <span class="badge" style="background-color: #28a745; color: white;" title="Trusted - High security score">{{ score }}/100</span>
+                        {% endif %}
+                    </td>
                     <td>
                         {% if g.is_admin and user.username in admin_users %}
                         <span class="badge badge-primary">Admin</span>

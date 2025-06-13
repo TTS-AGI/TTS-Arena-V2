@@ -21,7 +21,11 @@
         </div>
         <div class="user-detail-row">
             <div class="user-detail-label">Join Date:</div>
-            <div class="user-detail-value">{{ user.join_date.strftime('%Y-%m-%d %H:%M:%S') }}</div>
+            <div class="user-detail-value">{{ user.join_date.strftime('%Y-%m-%d %H:%M:%S') if user.join_date else 'N/A' }}</div>
+        </div>
+        <div class="user-detail-row">
+            <div class="user-detail-label">HF Account Created:</div>
+            <div class="user-detail-value">{{ user.hf_account_created.strftime('%Y-%m-%d %H:%M:%S') if user.hf_account_created else 'N/A' }}</div>
         </div>
     </div>
     
@@ -38,34 +42,99 @@
             <div class="stat-title">Conversational Votes</div>
             <div class="stat-value">{{ conversational_votes }}</div>
         </div>
+        <div class="stat-card security-score-card">
+            <div class="stat-title">Security Score</div>
+            <div class="stat-value">
+                {% if security_score < 20 %}
+                <span class="security-score high-risk">{{ security_score }}/100</span>
+                {% elif security_score < 40 %}
+                <span class="security-score medium-risk">{{ security_score }}/100</span>
+                {% elif security_score < 70 %}
+                <span class="security-score low-risk">{{ security_score }}/100</span>
+                {% else %}
+                <span class="security-score trusted">{{ security_score }}/100</span>
+                {% endif %}
+            </div>
+        </div>
     </div>
 </div>
 
-{% if favorite_models %}
 <div class="admin-card">
     <div class="admin-card-header">
-        <div class="admin-card-title">Favorite Models</div>
+        <div class="admin-card-title">Security Analysis</div>
     </div>
-    <div class="table-responsive">
-        <table class="admin-table">
-            <thead>
-                <tr>
-                    <th>Model</th>
-                    <th>Votes</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for model in favorite_models %}
-                <tr>
-                    <td>{{ model.name }}</td>
-                    <td>{{ model.count }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <div class="security-factors">
+        {% if security_factors.account_age_days is not none %}
+        <div class="security-factor">
+            <div class="factor-label">Account Age:</div>
+            <div class="factor-value">{{ security_factors.account_age_days }} days</div>
+        </div>
+        {% endif %}
+        
+        {% if security_factors.hf_account_age_days is not none %}
+        <div class="security-factor">
+            <div class="factor-label">HF Account Age:</div>
+            <div class="factor-value">{{ security_factors.hf_account_age_days }} days</div>
+        </div>
+        {% endif %}
+        
+        <div class="security-factor">
+            <div class="factor-label">Recent Vote Count (24h):</div>
+            <div class="factor-value">{{ security_factors.recent_vote_count or 0 }}</div>
+        </div>
+        
+        <div class="security-factor">
+            <div class="factor-label">Total Votes:</div>
+            <div class="factor-value">{{ security_factors.total_votes or 0 }}</div>
+        </div>
+        
+        {% if security_factors.avg_vote_interval %}
+        <div class="security-factor">
+            <div class="factor-label">Avg Vote Interval:</div>
+            <div class="factor-value">{{ "%.1f"|format(security_factors.avg_vote_interval) }}s</div>
+        </div>
+        {% endif %}
+        
+        <div class="security-factor">
+            <div class="factor-label">Suspicious Voting:</div>
+            <div class="factor-value">
+                {% if security_factors.suspicious_voting %}
+                <span class="status-bad">Yes</span>
+                {% if security_factors.suspicious_reason %}
+                <div class="factor-detail">{{ security_factors.suspicious_reason }}</div>
+                {% endif %}
+                {% else %}
+                <span class="status-good">No</span>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="security-factor">
+            <div class="factor-label">Rapid Voting:</div>
+            <div class="factor-value">
+                {% if security_factors.rapid_voting %}
+                <span class="status-bad">Yes</span>
+                {% else %}
+                <span class="status-good">No</span>
+                {% endif %}
+            </div>
+        </div>
+        
+        {% if security_factors.max_bias_ratio is defined %}
+        <div class="security-factor">
+            <div class="factor-label">Max Model Bias:</div>
+            <div class="factor-value">
+                {{ "%.1f"|format(security_factors.max_bias_ratio * 100) }}%
+                {% if security_factors.bias_penalty %}
+                <div class="factor-detail">{{ security_factors.bias_penalty }}</div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
-{% endif %}
+
+
 
 {% if recent_votes %}
 <div class="admin-card">
@@ -103,6 +172,53 @@
 </div>
 {% endif %}
 
+{% if model_bias_analysis %}
+<div class="admin-card">
+    <div class="admin-card-header">
+        <div class="admin-card-title">Model Bias Analysis</div>
+        <div class="admin-card-subtitle">Shows how often each model was chosen vs how often it appeared in comparisons</div>
+    </div>
+    <div class="table-responsive">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Model</th>
+                    <th>Chosen</th>
+                    <th>Appeared</th>
+                    <th>Bias Ratio</th>
+                    <th>Bias Level</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for model_stats in model_bias_analysis %}
+                <tr>
+                    <td>{{ model_stats.name }}</td>
+                    <td>{{ model_stats.chosen }}</td>
+                    <td>{{ model_stats.appeared }}</td>
+                    <td>{{ "%.1f"|format(model_stats.bias_ratio * 100) }}%</td>
+                    <td>
+                        {% if model_stats.appeared < 5 %}
+                        <span class="bias-badge insufficient-data">Too Few Votes</span>
+                        {% elif model_stats.bias_ratio >= 0.9 and model_stats.appeared >= 10 %}
+                        <span class="bias-badge extreme-bias">Extreme Bias</span>
+                        {% elif model_stats.bias_ratio >= 0.8 and model_stats.appeared >= 8 %}
+                        <span class="bias-badge high-bias">High Bias</span>
+                        {% elif model_stats.bias_ratio >= 0.7 and model_stats.appeared >= 5 %}
+                        <span class="bias-badge moderate-bias">Moderate Bias</span>
+                        {% elif model_stats.bias_ratio >= 0.6 and model_stats.appeared >= 5 %}
+                        <span class="bias-badge low-bias">Low Bias</span>
+                        {% else %}
+                        <span class="bias-badge no-bias">Normal Pattern</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
 <style>
     .user-detail-row {
         display: flex;
@@ -125,6 +241,112 @@
         margin-top: 24px;
     }
     
+    .security-score-card {
+        border: 2px solid #e9ecef;
+    }
+    
+    .security-score {
+        font-weight: bold;
+        font-size: 1.1em;
+    }
+    
+    .security-score.high-risk {
+        color: #dc3545;
+    }
+    
+    .security-score.medium-risk {
+        color: #fd7e14;
+    }
+    
+    .security-score.low-risk {
+        color: #ffc107;
+    }
+    
+    .security-score.trusted {
+        color: #28a745;
+    }
+    
+    .security-factors {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 16px;
+        margin-top: 16px;
+    }
+    
+    .security-factor {
+        display: flex;
+        flex-direction: column;
+        padding: 12px;
+        background-color: #f8f9fa;
+        border-radius: 6px;
+        border-left: 4px solid #dee2e6;
+    }
+    
+    .factor-label {
+        font-weight: 600;
+        margin-bottom: 4px;
+        color: #495057;
+    }
+    
+    .factor-value {
+        font-size: 1.1em;
+    }
+    
+    .factor-detail {
+        font-size: 0.9em;
+        color: #6c757d;
+        margin-top: 4px;
+        font-style: italic;
+    }
+    
+    .status-good {
+        color: #28a745;
+        font-weight: 600;
+    }
+    
+    .status-bad {
+        color: #dc3545;
+        font-weight: 600;
+    }
+    
+    .bias-badge {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.85em;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    
+    .bias-badge.extreme-bias {
+        background-color: #dc3545;
+        color: white;
+    }
+    
+    .bias-badge.high-bias {
+        background-color: #fd7e14;
+        color: white;
+    }
+    
+    .bias-badge.moderate-bias {
+        background-color: #ffc107;
+        color: black;
+    }
+    
+    .bias-badge.low-bias {
+        background-color: #17a2b8;
+        color: white;
+    }
+    
+    .bias-badge.no-bias {
+        background-color: #28a745;
+        color: white;
+    }
+    
+    .bias-badge.insufficient-data {
+        background-color: #6c757d;
+        color: white;
+    }
+    
     .text-truncate {
         max-width: 300px;
         white-space: nowrap;
@@ -139,6 +361,10 @@
         
         .user-detail-label {
             margin-bottom: 4px;
+        }
+        
+        .security-factors {
+            grid-template-columns: 1fr;
         }
     }
 </style>

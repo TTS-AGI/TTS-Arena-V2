@@ -1,0 +1,248 @@
+{% extends "admin/base.html" %}
+
+{% block extra_head %}
+{{ super() }}
+<style>
+    .security-alert {
+        padding: 12px 16px;
+        border-radius: var(--radius);
+        margin-bottom: 16px;
+        border-left: 4px solid;
+    }
+    
+    .security-alert.high {
+        background-color: #fef2f2;
+        border-color: #dc2626;
+        color: #991b1b;
+    }
+    
+    .security-alert.medium {
+        background-color: #fffbeb;
+        border-color: #d97706;
+        color: #92400e;
+    }
+    
+    .security-alert.low {
+        background-color: #f0f9ff;
+        border-color: #0284c7;
+        color: #0c4a6e;
+    }
+    
+    .score-badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 600;
+        color: white;
+    }
+    
+    .score-high { background-color: #dc2626; }
+    .score-medium { background-color: #d97706; }
+    .score-low { background-color: #059669; }
+    
+    .factor-list {
+        font-size: 12px;
+        color: #666;
+        margin-top: 4px;
+    }
+    
+    .factor-item {
+        margin-right: 12px;
+        display: inline-block;
+    }
+    
+    @media (prefers-color-scheme: dark) {
+        .security-alert.high {
+            background-color: rgba(220, 38, 38, 0.1);
+            color: #fca5a5;
+        }
+        
+        .security-alert.medium {
+            background-color: rgba(217, 119, 6, 0.1);
+            color: #fbbf24;
+        }
+        
+        .security-alert.low {
+            background-color: rgba(2, 132, 199, 0.1);
+            color: #7dd3fc;
+        }
+        
+        .factor-list {
+            color: #999;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block admin_content %}
+<div class="admin-header">
+    <div class="admin-title">Security Monitoring</div>
+</div>
+
+<!-- Security Alerts -->
+{% if coordinated_campaigns %}
+<div class="security-alert high">
+    <strong>⚠️ Coordinated Voting Detected!</strong>
+    {{ coordinated_campaigns|length }} potential voting campaign(s) detected in the last 6 hours.
+</div>
+{% endif %}
+
+{% if suspicious_users %}
+<div class="security-alert medium">
+    <strong>🔍 Suspicious Users Detected</strong>
+    {{ suspicious_users|length }} users with low security scores (< 50/100) found.
+</div>
+{% endif %}
+
+{% if biased_users %}
+<div class="security-alert low">
+    <strong>📊 Model Bias Detected</strong>
+    {{ biased_users|length }} users showing strong bias toward specific models.
+</div>
+{% endif %}
+
+<!-- Suspicious Users -->
+<div class="admin-card">
+    <div class="admin-card-header">
+        <div class="admin-card-title">Suspicious Users (Low Security Scores)</div>
+    </div>
+    {% if suspicious_users %}
+    <div class="table-responsive">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Security Score</th>
+                    <th>Account Age</th>
+                    <th>HF Account Age</th>
+                    <th>Total Votes</th>
+                    <th>Issues</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in suspicious_users %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('admin.user_detail', user_id=item.user.id) }}">
+                            {{ item.user.username }}
+                        </a>
+                    </td>
+                    <td>
+                        <span class="score-badge {% if item.score < 20 %}score-high{% elif item.score < 40 %}score-medium{% else %}score-low{% endif %}">
+                            {{ item.score }}/100
+                        </span>
+                    </td>
+                    <td>{{ item.factors.account_age_days or 'Unknown' }} days</td>
+                    <td>{{ item.factors.hf_account_age_days or 'Unknown' }} days</td>
+                    <td>{{ item.factors.total_votes or 0 }}</td>
+                    <td>
+                        <div class="factor-list">
+                            {% if item.factors.suspicious_voting %}
+                                <span class="factor-item">🚨 Suspicious voting</span>
+                            {% endif %}
+                            {% if item.factors.rapid_voting %}
+                                <span class="factor-item">⚡ Rapid voting</span>
+                            {% endif %}
+                            {% if item.factors.account_age_days and item.factors.account_age_days < 7 %}
+                                <span class="factor-item">🆕 New account</span>
+                            {% endif %}
+                            {% if item.factors.hf_account_age_days and item.factors.hf_account_age_days < 90 %}
+                                <span class="factor-item">🔰 New HF account</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p>No suspicious users detected.</p>
+    {% endif %}
+</div>
+
+<!-- Coordinated Voting Campaigns -->
+<div class="admin-card">
+    <div class="admin-card-header">
+        <div class="admin-card-title">Coordinated Voting Campaigns</div>
+    </div>
+    {% if coordinated_campaigns %}
+    {% for campaign in coordinated_campaigns %}
+    <div class="security-alert high" style="margin-bottom: 16px;">
+        <h4>{{ campaign.model.name }}</h4>
+        <p><strong>{{ campaign.vote_count }}</strong> votes from <strong>{{ campaign.user_count }}</strong> users in the last 6 hours</p>
+        
+        {% if campaign.suspicious_users %}
+        <div class="table-responsive" style="margin-top: 12px;">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Votes for Model</th>
+                        <th>Account Age</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in campaign.suspicious_users %}
+                    <tr>
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.votes_for_model }}</td>
+                        <td>{{ user.account_age_days or 'Unknown' }} days</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+    {% else %}
+    <p>No coordinated voting campaigns detected in the last 6 hours.</p>
+    {% endif %}
+</div>
+
+<!-- Model Bias Detection -->
+<div class="admin-card">
+    <div class="admin-card-header">
+        <div class="admin-card-title">Users with Strong Model Bias</div>
+    </div>
+    {% if biased_users %}
+    <div class="table-responsive">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Favored Model</th>
+                    <th>Bias Ratio</th>
+                    <th>Votes for Model</th>
+                    <th>Total Votes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in biased_users %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('admin.user_detail', user_id=item.user.id) }}">
+                            {{ item.user.username }}
+                        </a>
+                    </td>
+                    <td>{{ item.model.name }}</td>
+                    <td>
+                        <span class="score-badge {% if item.bias_ratio > 0.9 %}score-high{% elif item.bias_ratio > 0.8 %}score-medium{% else %}score-low{% endif %}">
+                            {{ "%.1f"|format(item.bias_ratio * 100) }}%
+                        </span>
+                    </td>
+                    <td>{{ item.votes_for_model }}</td>
+                    <td>{{ item.total_votes }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p>No users with strong model bias detected.</p>
+    {% endif %}
+</div>
+
+{% endblock %} 

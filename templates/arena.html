@@ -5,6 +5,23 @@
 {% block current_page %}Arena{% endblock %}
 
 {% block content %}
+<!-- Authentication status for JavaScript -->
+<div id="auth-status" data-authenticated="{% if current_user.is_authenticated %}true{% else %}false{% endif %}" style="display: none;"></div>
+
+{% if not current_user.is_authenticated %}
+<!-- Login prompt overlay -->
+<div id="login-prompt-overlay" class="login-prompt-overlay" style="display: none;">
+    <div class="login-prompt-content">
+        <h3>Login Required</h3>
+        <p>You need to be logged in to use TTS Arena. Login to generate audio and vote on models!</p>
+        <div class="login-prompt-actions">
+            <button class="login-prompt-close">Maybe later</button>
+            <a href="{{ url_for('auth.login', next=request.path) }}" class="login-prompt-btn">Login with Hugging Face</a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <div class="tabs">
     <div class="tab active" data-tab="tts">TTS</div>
     <div class="tab" data-tab="conversational">Conversational</div>
@@ -983,6 +1000,89 @@
             border-color: var(--border-color);
         }
     }
+
+    /* Login prompt overlay styles */
+    .login-prompt-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .login-prompt-content {
+        background: white;
+        border-radius: 12px;
+        padding: 32px;
+        max-width: 400px;
+        width: 90%;
+        text-align: center;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .login-prompt-content h3 {
+        margin: 0 0 16px 0;
+        color: var(--text-color);
+        font-size: 24px;
+    }
+
+    .login-prompt-content p {
+        margin: 0 0 24px 0;
+        color: var(--text-secondary);
+        line-height: 1.5;
+    }
+
+    .login-prompt-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+    }
+
+    .login-prompt-close {
+        padding: 12px 24px;
+        background: transparent;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        color: var(--text-secondary);
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+
+    .login-prompt-close:hover {
+        background: var(--light-gray);
+    }
+
+    .login-prompt-btn {
+        padding: 12px 24px;
+        background: var(--primary-color);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s;
+        display: inline-block;
+    }
+
+    .login-prompt-btn:hover {
+        background: var(--primary-hover);
+        transform: translateY(-1px);
+    }
+
+    /* Dark mode for login prompt */
+    @media (prefers-color-scheme: dark) {
+        .login-prompt-content {
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+        }
+    }
 </style>
 {% endblock %} 
 
@@ -990,6 +1090,40 @@
 <script src="{{ url_for('static', filename='js/waveplayer.js') }}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Check authentication status
+        const authStatus = document.getElementById('auth-status');
+        const isAuthenticated = authStatus ? authStatus.dataset.authenticated === 'true' : false;
+        const loginPromptOverlay = document.getElementById('login-prompt-overlay');
+        const loginPromptClose = document.querySelector('.login-prompt-close');
+
+        // Function to show login prompt
+        function showLoginPrompt() {
+            if (loginPromptOverlay) {
+                loginPromptOverlay.style.display = 'flex';
+            }
+        }
+
+        // Function to hide login prompt
+        function hideLoginPrompt() {
+            if (loginPromptOverlay) {
+                loginPromptOverlay.style.display = 'none';
+            }
+        }
+
+        // Add event listener to close button
+        if (loginPromptClose) {
+            loginPromptClose.addEventListener('click', hideLoginPrompt);
+        }
+
+        // Close prompt when clicking outside
+        if (loginPromptOverlay) {
+            loginPromptOverlay.addEventListener('click', function(e) {
+                if (e.target === loginPromptOverlay) {
+                    hideLoginPrompt();
+                }
+            });
+        }
+
         const synthForm = document.querySelector('.input-container');
         const synthBtn = document.querySelector('.synth-btn');
         const mobileSynthBtn = document.querySelector('.mobile-synth-btn');
@@ -1102,6 +1236,12 @@
                 e.preventDefault();
             }
 
+            // Check authentication first
+            if (!isAuthenticated) {
+                showLoginPrompt();
+                return;
+            }
+
             const text = textInput.value.trim();
             if (!text) {
                 openToast("Please enter some text to synthesize", "warning");
@@ -1193,7 +1333,13 @@
             })
             .catch(error => {
                 loadingContainer.style.display = 'none';
-                openToast(error.message, "error");
+                
+                // Handle authentication errors specially
+                if (error.message.includes('logged in to generate') || error.message.includes('logged in to vote')) {
+                    openToast("Please log in to use TTS Arena. <a href='{{ url_for('auth.login', next=request.path) }}' style='color: white; text-decoration: underline;'>Login now</a>", "error");
+                } else {
+                    openToast(error.message, "error");
+                }
                 console.error('Error:', error);
             });
         }
@@ -1266,7 +1412,12 @@
                     btn.querySelector('.vote-loader').style.display = 'none';
                 });
                 
-                openToast(error.message, "error");
+                // Handle authentication errors specially
+                if (error.message.includes('logged in to vote')) {
+                    openToast("Please log in to vote. <a href='{{ url_for('auth.login', next=request.path) }}' style='color: white; text-decoration: underline;'>Login now</a>", "error");
+                } else {
+                    openToast(error.message, "error");
+                }
                 console.error('Error:', error);
             });
         }
@@ -1803,7 +1954,13 @@
             })
             .catch(error => {
                 podcastLoadingContainer.style.display = 'none';
-                openToast(error.message, "error");
+                
+                // Handle authentication errors specially
+                if (error.message.includes('logged in to generate') || error.message.includes('logged in to vote')) {
+                    openToast("Please log in to use TTS Arena. <a href='{{ url_for('auth.login', next=request.path) }}' style='color: white; text-decoration: underline;'>Login now</a>", "error");
+                } else {
+                    openToast(error.message, "error");
+                }
                 console.error('Error:', error);
             });
         }
@@ -1875,7 +2032,12 @@
                     btn.querySelector('.vote-loader').style.display = 'none';
                 });
                 
-                openToast(error.message, "error");
+                // Handle authentication errors specially
+                if (error.message.includes('logged in to vote')) {
+                    openToast("Please log in to vote. <a href='{{ url_for('auth.login', next=request.path) }}' style='color: white; text-decoration: underline;'>Login now</a>", "error");
+                } else {
+                    openToast(error.message, "error");
+                }
                 console.error('Error:', error);
             });
         }
