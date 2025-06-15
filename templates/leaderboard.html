@@ -827,10 +827,7 @@
                 <div class="model-name">
                     <a href="{{ model.model_url }}" target="_blank" class="model-name-link">{{ model.name }}</a>
                     <div class="license-icon">
-                        {% if model.is_open %}
-                        <img src="{{ url_for('static', filename='open.svg') }}" alt="Open">
-                        <span class="tooltip">Open model</span>
-                        {% else %}
+                        {% if not model.is_open %}
                         <img src="{{ url_for('static', filename='closed.svg') }}" alt="Proprietary">
                         <span class="tooltip">Proprietary model</span>
                         {% endif %}
@@ -954,10 +951,7 @@
                 <div class="model-name">
                     {{ model.name }}
                     <div class="license-icon">
-                        {% if model.is_open %}
-                        <img src="{{ url_for('static', filename='open.svg') }}" alt="Open">
-                        <span class="tooltip">Open model</span>
-                        {% else %}
+                        {% if not model.is_open %}
                         <img src="{{ url_for('static', filename='closed.svg') }}" alt="Proprietary">
                         <span class="tooltip">Proprietary model</span>
                         {% endif %}
@@ -995,10 +989,7 @@
                 <div class="model-name">
                     {{ model.name }}
                     <div class="license-icon">
-                        {% if model.is_open %}
-                        <img src="{{ url_for('static', filename='open.svg') }}" alt="Open">
-                        <span class="tooltip">Open model</span>
-                        {% else %}
+                        {% if not model.is_open %}
                         <img src="{{ url_for('static', filename='closed.svg') }}" alt="Proprietary">
                         <span class="tooltip">Proprietary model</span>
                         {% endif %}
