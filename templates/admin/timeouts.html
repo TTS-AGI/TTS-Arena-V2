@@ -1,0 +1,457 @@
+{% extends "admin/base.html" %}
+
+{% block admin_content %}
+<div class="admin-header">
+    <div class="admin-title">User Timeout Management</div>
+</div>
+
+<!-- Create Timeout Form -->
+<div class="admin-card">
+    <div class="admin-card-header">
+        <div class="admin-card-title">Create New Timeout</div>
+    </div>
+    <form method="POST" action="{{ url_for('admin.create_timeout') }}" class="admin-form">
+        <div class="form-group">
+            <label for="user_search">Search User</label>
+            <input type="text" id="user_search" class="form-control" placeholder="Type username to search..." autocomplete="off">
+            <div id="user_search_results" class="user-search-results"></div>
+            <input type="hidden" id="user_id" name="user_id" required>
+            <div id="selected_user" class="selected-user"></div>
+        </div>
+        
+        <div class="form-group">
+            <label for="reason">Reason for Timeout</label>
+            <textarea id="reason" name="reason" class="form-control" rows="3" required placeholder="Explain why this user is being timed out..."></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="timeout_type">Timeout Type</label>
+            <select id="timeout_type" name="timeout_type" class="form-control" required>
+                <option value="manual">Manual Admin Action</option>
+                <option value="coordinated_voting">Coordinated Voting</option>
+                <option value="rapid_voting">Rapid Voting</option>
+                <option value="security_violation">Security Violation</option>
+                <option value="spam">Spam/Abuse</option>
+                <option value="other">Other</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="duration_days">Duration (Days)</label>
+            <select id="duration_days" name="duration_days" class="form-control" required>
+                <option value="1">1 Day</option>
+                <option value="3">3 Days</option>
+                <option value="7">1 Week</option>
+                <option value="14">2 Weeks</option>
+                <option value="30" selected>30 Days (Default)</option>
+                <option value="60">60 Days</option>
+                <option value="90">90 Days</option>
+                <option value="180">180 Days</option>
+                <option value="365">1 Year</option>
+            </select>
+        </div>
+        
+        <button type="submit" class="btn-primary">Create Timeout</button>
+    </form>
+</div>
+
+<!-- Active Timeouts -->
+<div class="admin-card">
+    <div class="admin-card-header">
+        <div class="admin-card-title">Active Timeouts ({{ active_timeouts|length }})</div>
+    </div>
+    {% if active_timeouts %}
+    <div class="table-responsive">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Reason</th>
+                    <th>Type</th>
+                    <th>Created</th>
+                    <th>Expires</th>
+                    <th>Remaining</th>
+                    <th>Created By</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for timeout in active_timeouts %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('admin.user_detail', user_id=timeout.user.id) }}">
+                            {{ timeout.user.username }}
+                        </a>
+                    </td>
+                    <td class="text-truncate" title="{{ timeout.reason }}">{{ timeout.reason }}</td>
+                    <td>
+                        <span class="timeout-type-badge timeout-{{ timeout.timeout_type }}">
+                            {{ timeout.timeout_type.replace('_', ' ').title() }}
+                        </span>
+                    </td>
+                    <td>{{ timeout.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>{{ timeout.expires_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>
+                        <span class="remaining-time" data-expires="{{ timeout.expires_at.isoformat() }}">
+                            Calculating...
+                        </span>
+                    </td>
+                    <td>
+                        {% if timeout.creator %}
+                            {{ timeout.creator.username }}
+                        {% else %}
+                            System
+                        {% endif %}
+                    </td>
+                    <td>
+                        <button class="action-btn cancel-timeout-btn" data-timeout-id="{{ timeout.id }}" data-username="{{ timeout.user.username }}">
+                            Cancel
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p>No active timeouts.</p>
+    {% endif %}
+</div>
+
+<!-- Recent Inactive Timeouts -->
+<div class="admin-card">
+    <div class="admin-card-header">
+        <div class="admin-card-title">Recent Expired/Cancelled Timeouts</div>
+    </div>
+    {% if recent_inactive %}
+    <div class="table-responsive">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Reason</th>
+                    <th>Type</th>
+                    <th>Created</th>
+                    <th>Expired/Cancelled</th>
+                    <th>Status</th>
+                    <th>Cancelled By</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for timeout in recent_inactive %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('admin.user_detail', user_id=timeout.user.id) }}">
+                            {{ timeout.user.username }}
+                        </a>
+                    </td>
+                    <td class="text-truncate" title="{{ timeout.reason }}">{{ timeout.reason }}</td>
+                    <td>
+                        <span class="timeout-type-badge timeout-{{ timeout.timeout_type }}">
+                            {{ timeout.timeout_type.replace('_', ' ').title() }}
+                        </span>
+                    </td>
+                    <td>{{ timeout.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>
+                        {% if timeout.cancelled_at %}
+                            {{ timeout.cancelled_at.strftime('%Y-%m-%d %H:%M') }}
+                        {% else %}
+                            {{ timeout.expires_at.strftime('%Y-%m-%d %H:%M') }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if timeout.cancelled_at %}
+                            <span class="status-badge cancelled">Cancelled</span>
+                        {% else %}
+                            <span class="status-badge expired">Expired</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if timeout.canceller %}
+                            {{ timeout.canceller.username }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p>No recent inactive timeouts.</p>
+    {% endif %}
+</div>
+
+<!-- Cancel Timeout Modal -->
+<div id="cancelTimeoutModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Cancel Timeout</h3>
+            <span class="modal-close">&times;</span>
+        </div>
+        <form method="POST" id="cancelTimeoutForm">
+            <div class="modal-body">
+                <p>Are you sure you want to cancel the timeout for <strong id="cancelUsername"></strong>?</p>
+                <div class="form-group">
+                    <label for="cancel_reason">Reason for Cancellation</label>
+                    <textarea id="cancel_reason" name="cancel_reason" class="form-control" rows="3" required placeholder="Explain why this timeout is being cancelled..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary modal-close">Cancel</button>
+                <button type="submit" class="btn-primary">Confirm Cancellation</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.user-search-results {
+    position: absolute;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-top: none;
+    border-radius: 0 0 var(--radius) var(--radius);
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+    width: 100%;
+}
+
+.user-search-item {
+    padding: 12px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.user-search-item:hover {
+    background-color: var(--secondary-color);
+}
+
+.user-search-item:last-child {
+    border-bottom: none;
+}
+
+.selected-user {
+    margin-top: 8px;
+    padding: 8px 12px;
+    background-color: var(--secondary-color);
+    border-radius: var(--radius);
+    display: none;
+}
+
+.timeout-type-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    color: white;
+}
+
+.timeout-manual { background-color: #6c757d; }
+.timeout-coordinated_voting { background-color: #dc3545; }
+.timeout-rapid_voting { background-color: #fd7e14; }
+.timeout-security_violation { background-color: #e83e8c; }
+.timeout-spam { background-color: #6f42c1; }
+.timeout-other { background-color: #20c997; }
+
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    color: white;
+}
+
+.status-badge.cancelled {
+    background-color: #ffc107;
+    color: black;
+}
+
+.status-badge.expired {
+    background-color: #6c757d;
+}
+
+.modal {
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+}
+
+.modal-content {
+    background-color: white;
+    margin: 10% auto;
+    padding: 0;
+    border-radius: var(--radius);
+    width: 90%;
+    max-width: 500px;
+    box-shadow: var(--shadow);
+}
+
+.modal-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    margin: 0;
+}
+
+.modal-close {
+    font-size: 24px;
+    cursor: pointer;
+    color: #666;
+}
+
+.modal-close:hover {
+    color: #000;
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.modal-footer {
+    padding: 20px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.form-group {
+    position: relative;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // User search functionality
+    const userSearch = document.getElementById('user_search');
+    const userSearchResults = document.getElementById('user_search_results');
+    const userIdInput = document.getElementById('user_id');
+    const selectedUserDiv = document.getElementById('selected_user');
+    
+    let searchTimeout;
+    
+    userSearch.addEventListener('input', function() {
+        const query = this.value.trim();
+        
+        if (query.length < 2) {
+            userSearchResults.style.display = 'none';
+            return;
+        }
+        
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            fetch(`{{ url_for('admin.user_search') }}?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(users => {
+                    userSearchResults.innerHTML = '';
+                    
+                    if (users.length === 0) {
+                        userSearchResults.innerHTML = '<div class="user-search-item">No users found</div>';
+                    } else {
+                        users.forEach(user => {
+                            const item = document.createElement('div');
+                            item.className = 'user-search-item';
+                            item.innerHTML = `<strong>${user.username}</strong><br><small>ID: ${user.id}, Joined: ${user.join_date}</small>`;
+                            item.addEventListener('click', () => selectUser(user));
+                            userSearchResults.appendChild(item);
+                        });
+                    }
+                    
+                    userSearchResults.style.display = 'block';
+                })
+                .catch(error => {
+                    console.error('Error searching users:', error);
+                });
+        }, 300);
+    });
+    
+    function selectUser(user) {
+        userIdInput.value = user.id;
+        userSearch.value = '';
+        userSearchResults.style.display = 'none';
+        selectedUserDiv.innerHTML = `<strong>Selected:</strong> ${user.username} (ID: ${user.id})`;
+        selectedUserDiv.style.display = 'block';
+    }
+    
+    // Hide search results when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!userSearch.contains(e.target) && !userSearchResults.contains(e.target)) {
+            userSearchResults.style.display = 'none';
+        }
+    });
+    
+    // Cancel timeout modal
+    const modal = document.getElementById('cancelTimeoutModal');
+    const cancelForm = document.getElementById('cancelTimeoutForm');
+    const cancelUsername = document.getElementById('cancelUsername');
+    const cancelButtons = document.querySelectorAll('.cancel-timeout-btn');
+    const modalCloseButtons = document.querySelectorAll('.modal-close');
+    
+    cancelButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const timeoutId = this.dataset.timeoutId;
+            const username = this.dataset.username;
+            
+            cancelForm.action = `{{ url_for('admin.cancel_timeout', timeout_id=0) }}`.replace('0', timeoutId);
+            cancelUsername.textContent = username;
+            modal.style.display = 'block';
+        });
+    });
+    
+    modalCloseButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            modal.style.display = 'none';
+        });
+    });
+    
+    // Close modal when clicking outside
+    window.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            modal.style.display = 'none';
+        }
+    });
+    
+    // Calculate remaining time for timeouts
+    function updateRemainingTimes() {
+        const remainingTimeElements = document.querySelectorAll('.remaining-time');
+        const now = new Date();
+        
+        remainingTimeElements.forEach(element => {
+            const expiresAt = new Date(element.dataset.expires);
+            const remaining = expiresAt - now;
+            
+            if (remaining <= 0) {
+                element.textContent = 'Expired';
+                element.style.color = '#dc3545';
+            } else {
+                const days = Math.floor(remaining / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((remaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                
+                if (days > 0) {
+                    element.textContent = `${days} day(s)`;
+                } else {
+                    element.textContent = `${hours} hour(s)`;
+                }
+            }
+        });
+    }
+    
+    // Update remaining times initially and every minute
+    updateRemainingTimes();
+    setInterval(updateRemainingTimes, 60000);
+});
+</script>
+{% endblock %} 

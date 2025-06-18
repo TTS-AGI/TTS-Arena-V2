@@ -1,0 +1,416 @@
+{% extends "admin/base.html" %}
+
+{% block admin_content %}
+<div class="admin-header">
+    <div class="admin-title">Campaign #{{ campaign.id }} Details</div>
+    <a href="{{ url_for('admin.campaigns') }}" class="btn-secondary">Back to Campaigns</a>
+</div>
+
+<!-- Campaign Overview -->
+<div class="admin-card">
+    <div class="admin-card-header">
+        <div class="admin-card-title">Campaign Overview</div>
+        <div class="campaign-status">
+            <span class="status-badge status-{{ campaign.status }}">
+                {{ campaign.status.replace('_', ' ').title() }}
+            </span>
+        </div>
+    </div>
+    <div class="campaign-details">
+        <div class="detail-grid">
+            <div class="detail-item">
+                <div class="detail-label">Target Model:</div>
+                <div class="detail-value">
+                    <strong>{{ campaign.model.name }}</strong>
+                    <span class="model-type-badge model-type-{{ campaign.model_type }}">
+                        {{ campaign.model_type.upper() }}
+                    </span>
+                </div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">Detected At:</div>
+                <div class="detail-value">{{ campaign.detected_at.strftime('%Y-%m-%d %H:%M:%S') }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">Detection Window:</div>
+                <div class="detail-value">{{ campaign.time_window_hours }} hours</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">Total Votes:</div>
+                <div class="detail-value">{{ campaign.vote_count }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">Users Involved:</div>
+                <div class="detail-value">{{ campaign.user_count }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">Confidence Score:</div>
+                <div class="detail-value">
+                    <div class="confidence-bar">
+                        <div class="confidence-fill" style="width: {{ (campaign.confidence_score * 100)|round }}%"></div>
+                        <span class="confidence-text">{{ (campaign.confidence_score * 100)|round }}%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        {% if campaign.resolved_at %}
+        <div class="resolution-info">
+            <h4>Resolution Information</h4>
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <div class="detail-label">Resolved By:</div>
+                    <div class="detail-value">{{ campaign.resolver.username if campaign.resolver else 'System' }}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Resolved At:</div>
+                    <div class="detail-value">{{ campaign.resolved_at.strftime('%Y-%m-%d %H:%M:%S') }}</div>
+                </div>
+            </div>
+            {% if campaign.admin_notes %}
+            <div class="admin-notes">
+                <div class="detail-label">Admin Notes:</div>
+                <div class="detail-value">{{ campaign.admin_notes }}</div>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Campaign Participants -->
+<div class="admin-card">
+    <div class="admin-card-header">
+        <div class="admin-card-title">Campaign Participants ({{ participants|length }})</div>
+    </div>
+    {% if participants %}
+    <div class="table-responsive">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Votes in Campaign</th>
+                    <th>First Vote</th>
+                    <th>Last Vote</th>
+                    <th>Suspicion Level</th>
+                    <th>Account Age</th>
+                    <th>Current Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for participant, user in participants %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('admin.user_detail', user_id=user.id) }}">
+                            {{ user.username }}
+                        </a>
+                    </td>
+                    <td>{{ participant.votes_in_campaign }}</td>
+                    <td>{{ participant.first_vote_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>{{ participant.last_vote_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>
+                        <span class="suspicion-badge suspicion-{{ participant.suspicion_level }}">
+                            {{ participant.suspicion_level.title() }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if user.join_date %}
+                            {{ ((campaign.detected_at - user.join_date).days) }} days
+                        {% else %}
+                            Unknown
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="user-status" data-user-id="{{ user.id }}">
+                            Checking...
+                        </div>
+                    </td>
+                    <td>
+                        <a href="{{ url_for('admin.user_detail', user_id=user.id) }}" class="action-btn">
+                            View User
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p>No participants found.</p>
+    {% endif %}
+</div>
+
+<!-- Related Timeouts -->
+<div class="admin-card">
+    <div class="admin-card-header">
+        <div class="admin-card-title">Related Timeouts ({{ related_timeouts|length }})</div>
+    </div>
+    {% if related_timeouts %}
+    <div class="table-responsive">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Reason</th>
+                    <th>Created</th>
+                    <th>Expires</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for timeout in related_timeouts %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('admin.user_detail', user_id=timeout.user.id) }}">
+                            {{ timeout.user.username }}
+                        </a>
+                    </td>
+                    <td class="text-truncate" title="{{ timeout.reason }}">{{ timeout.reason }}</td>
+                    <td>{{ timeout.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>{{ timeout.expires_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>
+                        {% if timeout.is_currently_active() %}
+                            <span class="status-badge status-active">Active</span>
+                        {% else %}
+                            <span class="status-badge status-expired">Expired</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('admin.timeouts') }}" class="action-btn">
+                            Manage
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p>No related timeouts.</p>
+    {% endif %}
+</div>
+
+<!-- Resolution Actions -->
+{% if campaign.status == 'active' %}
+<div class="admin-card">
+    <div class="admin-card-header">
+        <div class="admin-card-title">Resolve Campaign</div>
+    </div>
+    <form method="POST" action="{{ url_for('admin.resolve_campaign_route', campaign_id=campaign.id) }}" class="admin-form">
+        <div class="form-group">
+            <label for="status">Resolution Status</label>
+            <select id="status" name="status" class="form-control" required>
+                <option value="">Select resolution...</option>
+                <option value="resolved">Resolved - Legitimate coordinated campaign</option>
+                <option value="false_positive">False Positive - Not a real campaign</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="admin_notes">Admin Notes</label>
+            <textarea id="admin_notes" name="admin_notes" class="form-control" rows="3" 
+                      placeholder="Add notes about the resolution decision..."></textarea>
+        </div>
+        
+        <button type="submit" class="btn-primary">Resolve Campaign</button>
+    </form>
+</div>
+{% endif %}
+
+<style>
+.campaign-details {
+    background-color: var(--light-gray);
+    padding: 20px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-color);
+}
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.detail-label {
+    font-weight: 500;
+    color: #666;
+    font-size: 14px;
+}
+
+.detail-value {
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.campaign-status {
+    display: flex;
+    align-items: center;
+}
+
+.model-type-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    color: white;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.model-type-tts {
+    background-color: #007bff;
+}
+
+.model-type-conversational {
+    background-color: #28a745;
+}
+
+.confidence-bar {
+    position: relative;
+    width: 120px;
+    height: 24px;
+    background-color: #e9ecef;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.confidence-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #dc3545 0%, #ffc107 50%, #28a745 100%);
+    transition: width 0.3s ease;
+}
+
+.confidence-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 12px;
+    font-weight: 500;
+    color: #333;
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.8);
+}
+
+.resolution-info {
+    border-top: 1px solid var(--border-color);
+    padding-top: 20px;
+    margin-top: 20px;
+}
+
+.resolution-info h4 {
+    margin: 0 0 16px 0;
+    color: var(--primary-color);
+}
+
+.admin-notes {
+    margin-top: 16px;
+}
+
+.suspicion-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    color: white;
+}
+
+.suspicion-low {
+    background-color: #28a745;
+}
+
+.suspicion-medium {
+    background-color: #ffc107;
+    color: black;
+}
+
+.suspicion-high {
+    background-color: #dc3545;
+}
+
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    color: white;
+}
+
+.status-active {
+    background-color: #dc3545;
+}
+
+.status-resolved {
+    background-color: #28a745;
+}
+
+.status-false_positive {
+    background-color: #ffc107;
+    color: black;
+}
+
+.status-expired {
+    background-color: #6c757d;
+}
+
+.user-status {
+    font-size: 12px;
+}
+
+.user-status.timed-out {
+    color: #dc3545;
+    font-weight: 500;
+}
+
+.user-status.active {
+    color: #28a745;
+}
+
+@media (max-width: 768px) {
+    .detail-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .confidence-bar {
+        width: 100px;
+    }
+    
+    .admin-header {
+        flex-direction: column;
+        gap: 12px;
+        align-items: flex-start;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Check user timeout status for each participant
+    const userStatusElements = document.querySelectorAll('.user-status');
+    
+    userStatusElements.forEach(async (element) => {
+        const userId = element.dataset.userId;
+        
+        try {
+            // This would need to be implemented as an API endpoint
+            // For now, we'll just show a placeholder
+            element.textContent = 'Active';
+            element.className = 'user-status active';
+        } catch (error) {
+            element.textContent = 'Unknown';
+            element.className = 'user-status';
+        }
+    });
+});
+</script>
+{% endblock %} 

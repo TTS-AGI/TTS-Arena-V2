@@ -1,0 +1,253 @@
+{% extends "admin/base.html" %}
+
+{% block admin_content %}
+<div class="admin-header">
+    <div class="admin-title">Coordinated Voting Campaigns</div>
+</div>
+
+<!-- Campaign Statistics -->
+<div class="admin-stats">
+    <div class="stat-card">
+        <div class="stat-title">Total Campaigns</div>
+        <div class="stat-value">{{ stats.total }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-title">Active</div>
+        <div class="stat-value">{{ stats.active }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-title">Resolved</div>
+        <div class="stat-value">{{ stats.resolved }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-title">False Positives</div>
+        <div class="stat-value">{{ stats.false_positive }}</div>
+    </div>
+</div>
+
+<!-- Filter Controls -->
+<div class="admin-card">
+    <div class="admin-card-header">
+        <div class="admin-card-title">Filter Campaigns</div>
+    </div>
+    <div class="filter-controls">
+        <a href="{{ url_for('admin.campaigns', status='all') }}" 
+           class="filter-btn {% if current_filter == 'all' %}active{% endif %}">
+            All ({{ stats.total }})
+        </a>
+        <a href="{{ url_for('admin.campaigns', status='active') }}" 
+           class="filter-btn {% if current_filter == 'active' %}active{% endif %}">
+            Active ({{ stats.active }})
+        </a>
+        <a href="{{ url_for('admin.campaigns', status='resolved') }}" 
+           class="filter-btn {% if current_filter == 'resolved' %}active{% endif %}">
+            Resolved ({{ stats.resolved }})
+        </a>
+        <a href="{{ url_for('admin.campaigns', status='false_positive') }}" 
+           class="filter-btn {% if current_filter == 'false_positive' %}active{% endif %}">
+            False Positives ({{ stats.false_positive }})
+        </a>
+    </div>
+</div>
+
+<!-- Campaigns List -->
+<div class="admin-card">
+    <div class="admin-card-header">
+        <div class="admin-card-title">
+            {% if current_filter == 'all' %}
+                All Campaigns
+            {% else %}
+                {{ current_filter.replace('_', ' ').title() }} Campaigns
+            {% endif %}
+            ({{ campaigns|length }})
+        </div>
+    </div>
+    {% if campaigns %}
+    <div class="table-responsive">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Model</th>
+                    <th>Type</th>
+                    <th>Detected</th>
+                    <th>Votes</th>
+                    <th>Users</th>
+                    <th>Confidence</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for campaign in campaigns %}
+                <tr>
+                    <td>{{ campaign.id }}</td>
+                    <td>
+                        <div class="model-info">
+                            <strong>{{ campaign.model.name }}</strong>
+                            <small class="model-type">{{ campaign.model_type.upper() }}</small>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="model-type-badge model-type-{{ campaign.model_type }}">
+                            {{ campaign.model_type.upper() }}
+                        </span>
+                    </td>
+                    <td>{{ campaign.detected_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>{{ campaign.vote_count }}</td>
+                    <td>{{ campaign.user_count }}</td>
+                    <td>
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" style="width: {{ (campaign.confidence_score * 100)|round }}%"></div>
+                            <span class="confidence-text">{{ (campaign.confidence_score * 100)|round }}%</span>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="status-badge status-{{ campaign.status }}">
+                            {{ campaign.status.replace('_', ' ').title() }}
+                        </span>
+                    </td>
+                    <td>
+                        <a href="{{ url_for('admin.campaign_detail', campaign_id=campaign.id) }}" class="action-btn">
+                            View Details
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p>No campaigns found with the current filter.</p>
+    {% endif %}
+</div>
+
+<style>
+.filter-controls {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.filter-btn {
+    padding: 8px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    text-decoration: none;
+    color: var(--text-color);
+    background-color: white;
+    transition: all 0.2s;
+    font-size: 14px;
+}
+
+.filter-btn:hover {
+    background-color: var(--secondary-color);
+}
+
+.filter-btn.active {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.model-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.model-info strong {
+    font-weight: 500;
+}
+
+.model-info .model-type {
+    color: #666;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.model-type-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    color: white;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.model-type-tts {
+    background-color: #007bff;
+}
+
+.model-type-conversational {
+    background-color: #28a745;
+}
+
+.confidence-bar {
+    position: relative;
+    width: 80px;
+    height: 20px;
+    background-color: #e9ecef;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.confidence-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #dc3545 0%, #ffc107 50%, #28a745 100%);
+    transition: width 0.3s ease;
+}
+
+.confidence-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 11px;
+    font-weight: 500;
+    color: #333;
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.8);
+}
+
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    color: white;
+}
+
+.status-active {
+    background-color: #dc3545;
+}
+
+.status-resolved {
+    background-color: #28a745;
+}
+
+.status-false_positive {
+    background-color: #ffc107;
+    color: black;
+}
+
+@media (max-width: 768px) {
+    .filter-controls {
+        flex-direction: column;
+    }
+    
+    .filter-btn {
+        text-align: center;
+    }
+    
+    .confidence-bar {
+        width: 60px;
+    }
+    
+    .model-info {
+        min-width: 120px;
+    }
+}
+</style>
+{% endblock %} 

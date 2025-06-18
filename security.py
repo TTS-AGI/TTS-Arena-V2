@@ -89,7 +89,7 @@ def detect_coordinated_voting(model_id, hours_back=6, min_users=3, vote_threshol
     time_threshold = datetime.utcnow() - timedelta(hours=hours_back)
     
     # Get recent votes for this model
-    recent_votes = db.session.query(Vote.user_id).filter(
+    recent_votes = db.session.query(Vote.user_id, Vote.vote_date).filter(
         and_(
             Vote.model_chosen == model_id,
             Vote.vote_date >= time_threshold
@@ -99,34 +99,118 @@ def detect_coordinated_voting(model_id, hours_back=6, min_users=3, vote_threshol
     if len(recent_votes) < vote_threshold:
         return False, 0, len(recent_votes), []
     
-    # Count unique users
-    unique_users = set(vote.user_id for vote in recent_votes if vote.user_id)
-    user_count = len(unique_users)
+    # Count unique users and analyze patterns
+    user_vote_data = {}
+    for vote in recent_votes:
+        if vote.user_id:
+            if vote.user_id not in user_vote_data:
+                user_vote_data[vote.user_id] = []
+            user_vote_data[vote.user_id].append(vote.vote_date)
     
-    # Check if multiple users are voting for the same model in a short time
+    user_count = len(user_vote_data)
+    
+    # Enhanced detection logic
     if user_count >= min_users and len(recent_votes) >= vote_threshold:
-        # Get user details for suspicious users
         suspicious_users = []
-        for user_id in unique_users:
-            user_votes_for_model = Vote.query.filter(
-                and_(
-                    Vote.user_id == user_id,
-                    Vote.model_chosen == model_id,
-                    Vote.vote_date >= time_threshold
-                )
-            ).count()
+        high_suspicion_users = []
+        
+        for user_id, vote_dates in user_vote_data.items():
+            user_votes_for_model = len(vote_dates)
             
             if user_votes_for_model > 1:  # Multiple votes for same model in short time
                 user = User.query.get(user_id)
                 if user:
-                    suspicious_users.append({
+                    # Calculate suspicion level
+                    account_age_days = (datetime.utcnow() - user.join_date).days if user.join_date else 0
+                    vote_frequency = user_votes_for_model / hours_back  # votes per hour
+                    
+                    # Determine suspicion level
+                    suspicion_level = "low"
+                    if account_age_days < 30 or vote_frequency > 3:
+                        suspicion_level = "high"
+                        high_suspicion_users.append(user_id)
+                    elif account_age_days < 90 or vote_frequency > 1:
+                        suspicion_level = "medium"
+                    
+                    user_data = {
                         'user_id': user_id,
                         'username': user.username,
                         'votes_for_model': user_votes_for_model,
-                        'account_age_days': (datetime.utcnow() - user.join_date).days if user.join_date else None
-                    })
+                        'account_age_days': account_age_days,
+                        'suspicion_level': suspicion_level,
+                        'first_vote_at': min(vote_dates),
+                        'last_vote_at': max(vote_dates)
+                    }
+                    suspicious_users.append(user_data)
         
-        return True, user_count, len(recent_votes), suspicious_users
+        # Calculate confidence score
+        confidence_factors = []
+        
+        # Factor 1: Ratio of high suspicion users
+        if suspicious_users:
+            high_suspicion_ratio = len(high_suspicion_users) / len(suspicious_users)
+            confidence_factors.append(min(high_suspicion_ratio * 0.4, 0.4))
+        
+        # Factor 2: Vote concentration (more votes in shorter time = higher confidence)
+        vote_concentration = min(len(recent_votes) / (hours_back * user_count), 1.0)
+        confidence_factors.append(vote_concentration * 0.3)
+        
+        # Factor 3: New account participation
+        new_account_ratio = sum(1 for u in suspicious_users if u['account_age_days'] < 30) / len(suspicious_users) if suspicious_users else 0
+        confidence_factors.append(new_account_ratio * 0.3)
+        
+        confidence_score = sum(confidence_factors)
+        
+        # Only consider it coordinated if confidence is above threshold
+        is_coordinated = confidence_score >= 0.6
+        
+        if is_coordinated:
+            # Log the campaign automatically
+            try:
+                from models import log_coordinated_campaign, Model
+                model = Model.query.get(model_id)
+                model_type = model.model_type if model else "unknown"
+                
+                participants_data = [{
+                    'user_id': u['user_id'],
+                    'votes_in_campaign': u['votes_for_model'],
+                    'first_vote_at': u['first_vote_at'],
+                    'last_vote_at': u['last_vote_at'],
+                    'suspicion_level': u['suspicion_level']
+                } for u in suspicious_users]
+                
+                campaign = log_coordinated_campaign(
+                    model_id=model_id,
+                    model_type=model_type,
+                    vote_count=len(recent_votes),
+                    user_count=user_count,
+                    time_window_hours=hours_back,
+                    confidence_score=confidence_score,
+                    participants_data=participants_data
+                )
+                
+                # Automatically timeout high suspicion users
+                from models import create_user_timeout
+                timeout_count = 0
+                for user_id in high_suspicion_users:
+                    try:
+                        create_user_timeout(
+                            user_id=user_id,
+                            reason=f"Automatic timeout for participation in coordinated voting campaign (Campaign ID: {campaign.id})",
+                            timeout_type="coordinated_voting",
+                            duration_days=30,
+                            related_campaign_id=campaign.id
+                        )
+                        timeout_count += 1
+                    except Exception as e:
+                        logger.error(f"Error creating timeout for user {user_id}: {str(e)}")
+                
+                logger.warning(f"Coordinated voting campaign detected and logged (ID: {campaign.id}). {timeout_count} users timed out.")
+                
+            except Exception as e:
+                logger.error(f"Error logging coordinated campaign: {str(e)}")
+        
+        return is_coordinated, user_count, len(recent_votes), suspicious_users
     
     return False, user_count, len(recent_votes), []
 
@@ -324,6 +408,27 @@ def is_vote_allowed(user_id, ip_address=None):
     """
     if not user_id:
         return False, "User not authenticated", 0
+    
+    # Check if user is currently timed out
+    try:
+        from models import check_user_timeout
+        is_timed_out, timeout = check_user_timeout(user_id)
+        if is_timed_out:
+            remaining_time = timeout.expires_at - datetime.utcnow()
+            days_remaining = remaining_time.days
+            hours_remaining = remaining_time.seconds // 3600
+            
+            if days_remaining > 0:
+                time_str = f"{days_remaining} day(s)"
+            else:
+                time_str = f"{hours_remaining} hour(s)"
+                
+            return False, f"Account temporarily suspended until {timeout.expires_at.strftime('%Y-%m-%d %H:%M')} ({time_str} remaining). Reason: {timeout.reason}", 0
+    except ImportError:
+        # If models import fails, continue with other checks
+        pass
+    except Exception as e:
+        logger.error(f"Error checking user timeout: {str(e)}")
     
     # Check security score
     score, factors = check_user_security_score(user_id)

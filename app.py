@@ -47,7 +47,7 @@ from flask_login import LoginManager, current_user
 from models import *
 from auth import auth, init_oauth, is_admin
 from admin import admin
-from security import is_vote_allowed, check_user_security_score
+from security import is_vote_allowed, check_user_security_score, detect_coordinated_voting
 import os
 from dotenv import load_dotenv
 from flask_limiter import Limiter
@@ -808,6 +808,15 @@ def submit_vote():
     # Mark session as voted
     session_data["voted"] = True
 
+    # Check for coordinated voting campaigns (async to not slow down response)
+    try:
+        from threading import Thread
+        campaign_check_thread = Thread(target=check_for_coordinated_campaigns)
+        campaign_check_thread.daemon = True
+        campaign_check_thread.start()
+    except Exception as e:
+        app.logger.error(f"Error starting coordinated campaign check thread: {str(e)}")
+
     # Return updated models (use previously fetched objects)
     return jsonify(
         {
@@ -1096,6 +1105,15 @@ def submit_podcast_vote():
 
     # Mark session as voted
     session_data["voted"] = True
+
+    # Check for coordinated voting campaigns (async to not slow down response)
+    try:
+        from threading import Thread
+        campaign_check_thread = Thread(target=check_for_coordinated_campaigns)
+        campaign_check_thread.daemon = True
+        campaign_check_thread.start()
+    except Exception as e:
+        app.logger.error(f"Error starting coordinated campaign check thread: {str(e)}")
 
     # Return updated models (use previously fetched objects)
     return jsonify(
@@ -1438,6 +1456,32 @@ def get_weighted_random_models(
             break # Avoid potential issues
 
     return selected_models_list
+
+
+def check_for_coordinated_campaigns():
+    """Check all active models for potential coordinated voting campaigns"""
+    try:
+        from security import detect_coordinated_voting
+        from models import Model, ModelType
+        
+        # Check TTS models
+        tts_models = Model.query.filter_by(model_type=ModelType.TTS, is_active=True).all()
+        for model in tts_models:
+            try:
+                detect_coordinated_voting(model.id)
+            except Exception as e:
+                app.logger.error(f"Error checking coordinated voting for TTS model {model.id}: {str(e)}")
+        
+        # Check conversational models
+        conv_models = Model.query.filter_by(model_type=ModelType.CONVERSATIONAL, is_active=True).all()
+        for model in conv_models:
+            try:
+                detect_coordinated_voting(model.id)
+            except Exception as e:
+                app.logger.error(f"Error checking coordinated voting for conversational model {model.id}: {str(e)}")
+                
+    except Exception as e:
+        app.logger.error(f"Error in coordinated campaign check: {str(e)}")
 
 
 if __name__ == "__main__":

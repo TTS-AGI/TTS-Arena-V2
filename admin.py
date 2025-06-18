@@ -1,11 +1,17 @@
 from flask import Blueprint, render_template, current_app, jsonify, request, redirect, url_for, flash
-from models import db, User, Model, Vote, EloHistory, ModelType
+from models import (
+    db, User, Model, Vote, EloHistory, ModelType, 
+    CoordinatedVotingCampaign, CampaignParticipant, UserTimeout,
+    get_user_timeouts, get_coordinated_campaigns, resolve_campaign,
+    create_user_timeout, cancel_user_timeout, check_user_timeout
+)
 from auth import admin_required
 from security import check_user_security_score
 from sqlalchemy import func, desc, extract, text
 from datetime import datetime, timedelta
 import json
 import os
+from sqlalchemy import or_
 
 admin = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -679,4 +685,207 @@ def security():
         return redirect(url_for("admin.index"))
     except Exception as e:
         flash(f"Error loading security data: {str(e)}", "error")
-        return redirect(url_for("admin.index")) 
+        return redirect(url_for("admin.index"))
+
+
+@admin.route("/timeouts")
+@admin_required
+def timeouts():
+    """Manage user timeouts"""
+    # Get active timeouts
+    active_timeouts = get_user_timeouts(active_only=True, limit=100)
+    
+    # Get recent expired/cancelled timeouts
+    recent_inactive = UserTimeout.query.filter(
+        or_(
+            UserTimeout.is_active == False,
+            UserTimeout.expires_at <= datetime.utcnow()
+        )
+    ).order_by(UserTimeout.created_at.desc()).limit(50).all()
+    
+    # Get coordinated campaigns for context
+    recent_campaigns = get_coordinated_campaigns(limit=20)
+    
+    return render_template(
+        "admin/timeouts.html",
+        active_timeouts=active_timeouts,
+        recent_inactive=recent_inactive,
+        recent_campaigns=recent_campaigns
+    )
+
+
+@admin.route("/timeout/create", methods=["POST"])
+@admin_required
+def create_timeout():
+    """Create a new user timeout"""
+    try:
+        user_id = request.form.get("user_id", type=int)
+        reason = request.form.get("reason", "").strip()
+        timeout_type = request.form.get("timeout_type", "manual")
+        duration_days = request.form.get("duration_days", type=int)
+        
+        if not all([user_id, reason, duration_days]):
+            flash("All fields are required", "error")
+            return redirect(url_for("admin.timeouts"))
+        
+        if duration_days < 1 or duration_days > 365:
+            flash("Duration must be between 1 and 365 days", "error")
+            return redirect(url_for("admin.timeouts"))
+        
+        # Check if user exists
+        user = User.query.get(user_id)
+        if not user:
+            flash("User not found", "error")
+            return redirect(url_for("admin.timeouts"))
+        
+        # Check if user already has an active timeout
+        is_timed_out, existing_timeout = check_user_timeout(user_id)
+        if is_timed_out:
+            flash(f"User {user.username} already has an active timeout until {existing_timeout.expires_at}", "error")
+            return redirect(url_for("admin.timeouts"))
+        
+        # Create timeout
+        from flask_login import current_user
+        timeout = create_user_timeout(
+            user_id=user_id,
+            reason=reason,
+            timeout_type=timeout_type,
+            duration_days=duration_days,
+            created_by=current_user.id if current_user.is_authenticated else None
+        )
+        
+        flash(f"Timeout created for {user.username} (expires: {timeout.expires_at})", "success")
+        
+    except Exception as e:
+        flash(f"Error creating timeout: {str(e)}", "error")
+    
+    return redirect(url_for("admin.timeouts"))
+
+
+@admin.route("/timeout/cancel/<int:timeout_id>", methods=["POST"])
+@admin_required
+def cancel_timeout(timeout_id):
+    """Cancel an active timeout"""
+    try:
+        cancel_reason = request.form.get("cancel_reason", "").strip()
+        if not cancel_reason:
+            flash("Cancel reason is required", "error")
+            return redirect(url_for("admin.timeouts"))
+        
+        from flask_login import current_user
+        success, message = cancel_user_timeout(
+            timeout_id=timeout_id,
+            cancelled_by=current_user.id if current_user.is_authenticated else None,
+            cancel_reason=cancel_reason
+        )
+        
+        if success:
+            flash(message, "success")
+        else:
+            flash(message, "error")
+            
+    except Exception as e:
+        flash(f"Error cancelling timeout: {str(e)}", "error")
+    
+    return redirect(url_for("admin.timeouts"))
+
+
+@admin.route("/campaigns")
+@admin_required
+def campaigns():
+    """View and manage coordinated voting campaigns"""
+    status_filter = request.args.get("status", "all")
+    
+    if status_filter == "all":
+        campaigns = get_coordinated_campaigns(limit=100)
+    else:
+        campaigns = get_coordinated_campaigns(status=status_filter, limit=100)
+    
+    # Get campaign statistics
+    stats = {
+        "total": CoordinatedVotingCampaign.query.count(),
+        "active": CoordinatedVotingCampaign.query.filter_by(status="active").count(),
+        "resolved": CoordinatedVotingCampaign.query.filter_by(status="resolved").count(),
+        "false_positive": CoordinatedVotingCampaign.query.filter_by(status="false_positive").count(),
+    }
+    
+    return render_template(
+        "admin/campaigns.html",
+        campaigns=campaigns,
+        stats=stats,
+        current_filter=status_filter
+    )
+
+
+@admin.route("/campaign/<int:campaign_id>")
+@admin_required
+def campaign_detail(campaign_id):
+    """View detailed information about a coordinated voting campaign"""
+    campaign = CoordinatedVotingCampaign.query.get_or_404(campaign_id)
+    
+    # Get participants with user details
+    participants = db.session.query(CampaignParticipant, User).join(
+        User, CampaignParticipant.user_id == User.id
+    ).filter(CampaignParticipant.campaign_id == campaign_id).all()
+    
+    # Get related timeouts
+    related_timeouts = UserTimeout.query.filter_by(
+        related_campaign_id=campaign_id
+    ).all()
+    
+    return render_template(
+        "admin/campaign_detail.html",
+        campaign=campaign,
+        participants=participants,
+        related_timeouts=related_timeouts
+    )
+
+
+@admin.route("/campaign/resolve/<int:campaign_id>", methods=["POST"])
+@admin_required
+def resolve_campaign_route(campaign_id):
+    """Mark a campaign as resolved"""
+    try:
+        status = request.form.get("status")
+        admin_notes = request.form.get("admin_notes", "").strip()
+        
+        if status not in ["resolved", "false_positive"]:
+            flash("Invalid status", "error")
+            return redirect(url_for("admin.campaign_detail", campaign_id=campaign_id))
+        
+        from flask_login import current_user
+        success, message = resolve_campaign(
+            campaign_id=campaign_id,
+            resolved_by=current_user.id if current_user.is_authenticated else None,
+            status=status,
+            admin_notes=admin_notes
+        )
+        
+        if success:
+            flash(f"Campaign marked as {status}", "success")
+        else:
+            flash(message, "error")
+            
+    except Exception as e:
+        flash(f"Error resolving campaign: {str(e)}", "error")
+    
+    return redirect(url_for("admin.campaign_detail", campaign_id=campaign_id))
+
+
+@admin.route("/api/user-search")
+@admin_required
+def user_search():
+    """Search for users by username (for timeout creation)"""
+    query = request.args.get("q", "").strip()
+    if len(query) < 2:
+        return jsonify([])
+    
+    users = User.query.filter(
+        User.username.ilike(f"%{query}%")
+    ).limit(10).all()
+    
+    return jsonify([{
+        "id": user.id,
+        "username": user.username,
+        "join_date": user.join_date.strftime("%Y-%m-%d") if user.join_date else "N/A"
+    } for user in users]) 
