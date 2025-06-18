@@ -617,7 +617,7 @@ def insert_initial_models():
             name="OpenAudio S1",
             model_type=ModelType.TTS,
             is_open=False,
-            is_active=True, # NOTE: Waiting to receive a pool of voices
+            is_active=False, # NOTE: Waiting to receive a pool of voices
             model_url="https://fish.audio/",
         ),
     ]
