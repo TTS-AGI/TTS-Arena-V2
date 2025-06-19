@@ -290,8 +290,8 @@ def get_leaderboard_data(model_type):
     """
     query = Model.query.filter_by(model_type=model_type)
 
-    # Get models ordered by ELO score
-    models = query.order_by(Model.current_elo.desc()).all()
+    # Get models with >1k votes ordered by ELO score
+    models = query.filter(Model.match_count > 1000).order_by(Model.current_elo.desc()).all()
 
     result = []
     for rank, model in enumerate(models, 1):
