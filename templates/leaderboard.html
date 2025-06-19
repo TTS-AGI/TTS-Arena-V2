@@ -549,6 +549,17 @@
             filter: invert(1);
         }
         
+        .disputed-badge {
+            background-color: rgba(254, 243, 199, 0.2);
+            color: #fbbf24;
+            border-color: #f59e0b;
+        }
+        
+        .disputed-badge .tooltip {
+            background-color: rgba(0, 0, 0, 0.9);
+            color: white;
+        }
+        
         .timeline-select, .timeline-button {
             background-color: var(--light-gray);
             border-color: var(--border-color);
@@ -697,6 +708,57 @@
         padding: 24px;
         color: var(--text-color);
     }
+
+    .disputed-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background-color: #fef3c7;
+        color: #92400e;
+        padding: 2px 6px;
+        border-radius: 12px;
+        font-size: 10px;
+        font-weight: 600;
+        margin-left: 6px;
+        cursor: help;
+        position: relative;
+        border: 1px solid #f59e0b;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+    }
+    
+    .disputed-badge svg {
+        width: 10px;
+        height: 10px;
+        color: #f59e0b;
+        flex-shrink: 0;
+    }
+    
+    .disputed-badge .tooltip {
+        visibility: hidden;
+        background-color: rgba(0, 0, 0, 0.9);
+        color: white;
+        text-align: center;
+        border-radius: 4px;
+        padding: 6px 10px;
+        position: absolute;
+        z-index: 1;
+        bottom: 125%;
+        left: 50%;
+        transform: translateX(-50%);
+        opacity: 0;
+        transition: opacity 0.3s;
+        font-weight: normal;
+        font-size: 12px;
+        white-space: nowrap;
+        text-transform: none;
+        letter-spacing: normal;
+    }
+    
+    .disputed-badge:hover .tooltip {
+        visibility: visible;
+        opacity: 1;
+    }
 </style>
 {% endblock %}
 
@@ -794,6 +856,17 @@
                         <span class="tooltip">Proprietary model</span>
                         {% endif %}
                     </div>
+                    {% if model.id == "lanternfish-1" %}
+                    <div class="disputed-badge">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                            <line x1="12" y1="9" x2="12" y2="13"/>
+                            <line x1="12" y1="17" x2="12" y2="17"/>
+                        </svg>
+                        <span>Disputed</span>
+                        <span class="tooltip">Potential vote manipulation</span>
+                    </div>
+                    {% endif %}
                 </div>
                 <div class="win-rate">{{ model.win_rate }}</div>
                 <div class="total-votes">{{ model.total_votes }}</div>
@@ -832,6 +905,17 @@
                         <span class="tooltip">Proprietary model</span>
                         {% endif %}
                     </div>
+                    {% if model.id == "lanternfish-1" %}
+                    <div class="disputed-badge">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                            <line x1="12" y1="9" x2="12" y2="13"/>
+                            <line x1="12" y1="17" x2="12" y2="17"/>
+                        </svg>
+                        <span>Disputed</span>
+                        <span class="tooltip">Potential vote manipulation</span>
+                    </div>
+                    {% endif %}
                 </div>
                 <div class="win-rate">{{ model.win_rate }}</div>
                 <div class="total-votes">{{ model.total_votes }}</div>
@@ -956,6 +1040,17 @@
                         <span class="tooltip">Proprietary model</span>
                         {% endif %}
                     </div>
+                    {% if model.id == "lanternfish-1" %}
+                    <div class="disputed-badge">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                            <line x1="12" y1="9" x2="12" y2="13"/>
+                            <line x1="12" y1="17" x2="12" y2="17"/>
+                        </svg>
+                        <span>Disputed</span>
+                        <span class="tooltip">Potential vote manipulation</span>
+                    </div>
+                    {% endif %}
                 </div>
                 <div class="win-rate">{{ model.win_rate }}</div>
                 <div class="total-votes">{{ model.total_votes }}</div>
@@ -994,6 +1089,16 @@
                         <span class="tooltip">Proprietary model</span>
                         {% endif %}
                     </div>
+                    {% if model.id == "lanternfish-1" %}
+                    <div class="disputed-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                            <line x1="12" y1="9" x2="12" y2="13"/>
+                            <line x1="12" y1="17" x2="12" y2="17"/>
+                        </svg>
+                        <span class="tooltip">Disputed - Potential vote manipulation</span>
+                    </div>
+                    {% endif %}
                 </div>
                 <div class="win-rate">{{ model.win_rate }}</div>
                 <div class="total-votes">{{ model.total_votes }}</div>
@@ -1300,6 +1405,16 @@
                                             <img src="${model.is_open ? '/static/open.svg' : '/static/closed.svg'}" alt="${model.is_open ? 'Open' : 'Proprietary'}">
                                             <span class="tooltip">${model.is_open ? 'Open model' : 'Proprietary model'}</span>
                                         </div>
+                                        ${model.id === 'lanternfish-1' ? `
+                                        <div class="disputed-icon">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                                                <line x1="12" y1="9" x2="12" y2="13"/>
+                                                <line x1="12" y1="17" x2="12" y2="17"/>
+                                            </svg>
+                                            <span class="tooltip">Disputed - Potential vote manipulation</span>
+                                        </div>
+                                        ` : ''}
                                     </div>
                                     <div class="win-rate">${model.win_rate}</div>
                                     <div class="total-votes">${model.total_votes}</div>
