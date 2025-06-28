@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import math
 from sqlalchemy import func, text
 import logging
+import hashlib
 
 db = SQLAlchemy()
 
@@ -72,6 +73,11 @@ class Vote(db.Model):
     user_agent = db.Column(db.String(500), nullable=True)  # Browser/device info
     generation_date = db.Column(db.DateTime, nullable=True)  # When audio was generated
     cache_hit = db.Column(db.Boolean, nullable=True)  # Whether generation was from cache
+    
+    # Sentence origin tracking
+    sentence_hash = db.Column(db.String(64), nullable=True, index=True)  # SHA-256 hash of the sentence
+    sentence_origin = db.Column(db.String(20), nullable=True)  # 'dataset', 'custom', 'unknown'
+    counts_for_public_leaderboard = db.Column(db.Boolean, default=True)  # Whether this vote counts for public leaderboard
 
     chosen = db.relationship(
         "Model",
@@ -174,6 +180,19 @@ class UserTimeout(db.Model):
         return f"<UserTimeout {self.user_id}: {self.timeout_type} until {self.expires_at}>"
 
 
+class ConsumedSentence(db.Model):
+    """Track sentences that have been used to ensure each sentence is only used once"""
+    id = db.Column(db.Integer, primary_key=True)
+    sentence_hash = db.Column(db.String(64), unique=True, nullable=False, index=True)  # SHA-256 hash
+    sentence_text = db.Column(db.Text, nullable=False)  # Store original text for debugging/admin purposes
+    consumed_at = db.Column(db.DateTime, default=datetime.utcnow)
+    session_id = db.Column(db.String(100), nullable=True)  # Track which session consumed it
+    usage_type = db.Column(db.String(20), nullable=False)  # 'cache', 'direct', 'random'
+    
+    def __repr__(self):
+        return f"<ConsumedSentence {self.sentence_hash[:8]}...({self.usage_type})>"
+
+
 def calculate_elo_change(winner_elo, loser_elo, k_factor=32):
     """Calculate Elo rating changes for a match."""
     expected_winner = 1 / (1 + math.pow(10, (loser_elo - winner_elo) / 400))
@@ -214,8 +233,23 @@ def anonymize_ip_address(ip_address):
 
 def record_vote(user_id, text, chosen_model_id, rejected_model_id, model_type, 
                 session_duration=None, ip_address=None, user_agent=None, 
-                generation_date=None, cache_hit=None):
+                generation_date=None, cache_hit=None, all_dataset_sentences=None):
     """Record a vote and update Elo ratings."""
+    
+    # Determine sentence origin and whether it should count for public leaderboard
+    sentence_hash = hash_sentence(text)
+    sentence_origin = 'unknown'
+    counts_for_public = True
+    
+    if all_dataset_sentences and text in all_dataset_sentences:
+        sentence_origin = 'dataset'
+        # Only count for public leaderboard if sentence was unconsumed when used
+        # Check if it was consumed BEFORE this vote (don't consume yet)
+        counts_for_public = not is_sentence_consumed(text)
+    else:
+        sentence_origin = 'custom'
+        counts_for_public = False  # Custom sentences never count for public leaderboard
+    
     # Create the vote
     vote = Vote(
         user_id=user_id,  # Required - user must be logged in to vote
@@ -228,6 +262,9 @@ def record_vote(user_id, text, chosen_model_id, rejected_model_id, model_type,
         user_agent=user_agent[:500] if user_agent else None,  # Truncate if too long
         generation_date=generation_date,
         cache_hit=cache_hit,
+        sentence_hash=sentence_hash,
+        sentence_origin=sentence_origin,
+        counts_for_public_leaderboard=counts_for_public,
     )
     db.session.add(vote)
     db.session.flush()  # Get the vote ID without committing
@@ -244,18 +281,24 @@ def record_vote(user_id, text, chosen_model_id, rejected_model_id, model_type,
         db.session.rollback()
         return None, "One or both models not found for the specified model type"
 
-    # Calculate new Elo ratings
-    new_chosen_elo, new_rejected_elo = calculate_elo_change(
-        chosen_model.current_elo, rejected_model.current_elo
-    )
+    # Only update Elo ratings and public stats if this vote counts for public leaderboard
+    if counts_for_public:
+        # Calculate new Elo ratings
+        new_chosen_elo, new_rejected_elo = calculate_elo_change(
+            chosen_model.current_elo, rejected_model.current_elo
+        )
 
-    # Update model stats
-    chosen_model.current_elo = new_chosen_elo
-    chosen_model.win_count += 1
-    chosen_model.match_count += 1
+        # Update model stats
+        chosen_model.current_elo = new_chosen_elo
+        chosen_model.win_count += 1
+        chosen_model.match_count += 1
 
-    rejected_model.current_elo = new_rejected_elo
-    rejected_model.match_count += 1
+        rejected_model.current_elo = new_rejected_elo
+        rejected_model.match_count += 1
+    else:
+        # For votes that don't count for public leaderboard, keep current Elo
+        new_chosen_elo = chosen_model.current_elo
+        new_rejected_elo = rejected_model.current_elo
 
     # Record Elo history
     chosen_history = EloHistory(
@@ -281,6 +324,7 @@ def record_vote(user_id, text, chosen_model_id, rejected_model_id, model_type,
 def get_leaderboard_data(model_type):
     """
     Get leaderboard data for the specified model type.
+    Only includes votes that count for the public leaderboard.
 
     Args:
         model_type (str): The model type ('tts' or 'conversational')
@@ -291,6 +335,7 @@ def get_leaderboard_data(model_type):
     query = Model.query.filter_by(model_type=model_type)
 
     # Get models with >1k votes ordered by ELO score
+    # Note: Model.match_count now only includes votes that count for public leaderboard
     models = query.filter(Model.match_count > 1000).order_by(Model.current_elo.desc()).all()
 
     result = []
@@ -325,6 +370,7 @@ def get_leaderboard_data(model_type):
 def get_user_leaderboard(user_id, model_type):
     """
     Get personalized leaderboard data for a specific user.
+    Includes ALL votes (both dataset and custom sentences).
 
     Args:
         user_id (int): The user ID
@@ -336,7 +382,7 @@ def get_user_leaderboard(user_id, model_type):
     # Get all models of the specified type
     models = Model.query.filter_by(model_type=model_type).all()
 
-    # Get user's votes
+    # Get user's votes (includes both public and custom sentence votes)
     user_votes = Vote.query.filter_by(user_id=user_id, model_type=model_type).all()
 
     # Calculate win counts and match counts for each model based on user's votes
@@ -415,17 +461,19 @@ def get_historical_leaderboard_data(model_type, target_date=None):
         if not elo_entry:
             continue
 
-        # Count wins and matches up to the target date
+        # Count wins and matches up to the target date (only public leaderboard votes)
         match_count = Vote.query.filter(
             db.or_(Vote.model_chosen == model.id, Vote.model_rejected == model.id),
             Vote.model_type == model_type,
             Vote.vote_date <= target_date,
+            Vote.counts_for_public_leaderboard == True,
         ).count()
 
         win_count = Vote.query.filter(
             Vote.model_chosen == model.id,
             Vote.model_type == model_type,
             Vote.vote_date <= target_date,
+            Vote.counts_for_public_leaderboard == True,
         ).count()
 
         # Calculate win rate
@@ -823,3 +871,69 @@ def resolve_campaign(campaign_id, resolved_by, status, admin_notes=None):
     
     db.session.commit()
     return True, "Campaign resolved successfully"
+
+
+def hash_sentence(sentence_text):
+    """Generate a SHA-256 hash for a sentence"""
+    return hashlib.sha256(sentence_text.strip().encode('utf-8')).hexdigest()
+
+
+def is_sentence_consumed(sentence_text):
+    """Check if a sentence has already been consumed"""
+    sentence_hash = hash_sentence(sentence_text)
+    return ConsumedSentence.query.filter_by(sentence_hash=sentence_hash).first() is not None
+
+
+def mark_sentence_consumed(sentence_text, session_id=None, usage_type='direct'):
+    """Mark a sentence as consumed"""
+    sentence_hash = hash_sentence(sentence_text)
+    
+    # Check if already consumed
+    existing = ConsumedSentence.query.filter_by(sentence_hash=sentence_hash).first()
+    if existing:
+        return existing  # Already consumed
+    
+    consumed_sentence = ConsumedSentence(
+        sentence_hash=sentence_hash,
+        sentence_text=sentence_text,
+        session_id=session_id,
+        usage_type=usage_type
+    )
+    
+    db.session.add(consumed_sentence)
+    db.session.commit()
+    return consumed_sentence
+
+
+def get_unconsumed_sentences(sentence_pool):
+    """Filter a list of sentences to only include unconsumed ones"""
+    if not sentence_pool:
+        return []
+    
+    # Get all consumed sentence hashes
+    consumed_hashes = set(
+        row[0] for row in db.session.query(ConsumedSentence.sentence_hash).all()
+    )
+    
+    # Filter out consumed sentences
+    unconsumed = []
+    for sentence in sentence_pool:
+        if hash_sentence(sentence) not in consumed_hashes:
+            unconsumed.append(sentence)
+    
+    return unconsumed
+
+
+def get_consumed_sentences_count():
+    """Get the total count of consumed sentences"""
+    return ConsumedSentence.query.count()
+
+
+def get_random_unconsumed_sentence(sentence_pool):
+    """Get a random unconsumed sentence from the pool"""
+    unconsumed = get_unconsumed_sentences(sentence_pool)
+    if not unconsumed:
+        return None
+    
+    import random
+    return random.choice(unconsumed)

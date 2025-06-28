@@ -12,3 +12,4 @@ gunicorn
 waitress
 fal-client
 git+https://github.com/playht/pyht
+datasets

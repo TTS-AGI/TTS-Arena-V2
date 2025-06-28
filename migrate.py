@@ -103,6 +103,25 @@ def create_timeout_and_campaign_tables(cursor):
     else:
         click.echo("⏭️  Table 'user_timeout' already exists, skipping")
     
+    # Create consumed_sentence table
+    if not check_table_exists(cursor, "consumed_sentence"):
+        cursor.execute("""
+            CREATE TABLE consumed_sentence (
+                id INTEGER PRIMARY KEY,
+                sentence_hash VARCHAR(64) UNIQUE NOT NULL,
+                sentence_text TEXT NOT NULL,
+                consumed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                session_id VARCHAR(100),
+                usage_type VARCHAR(20) NOT NULL
+            )
+        """)
+        # Create index on sentence_hash for performance
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_consumed_sentence_sentence_hash ON consumed_sentence (sentence_hash)")
+        tables_created.append("consumed_sentence")
+        click.echo("✅ Created table 'consumed_sentence' with index")
+    else:
+        click.echo("⏭️  Table 'consumed_sentence' already exists, skipping")
+    
     return tables_created
 
 
@@ -129,12 +148,16 @@ def add_analytics_columns_and_tables(db_path):
             ("ip_address_partial", "VARCHAR(20)"),
             ("user_agent", "VARCHAR(500)"),
             ("generation_date", "DATETIME"),
-            ("cache_hit", "BOOLEAN")
+            ("cache_hit", "BOOLEAN"),
+            ("sentence_hash", "VARCHAR(64)"),
+            ("sentence_origin", "VARCHAR(20)"),
+            ("counts_for_public_leaderboard", "BOOLEAN DEFAULT 1")
         ]
         
         # Define the columns to add to user table
         user_columns_to_add = [
-            ("hf_account_created", "DATETIME")
+            ("hf_account_created", "DATETIME"),
+            ("show_in_leaderboard", "BOOLEAN DEFAULT 1")
         ]
         
         added_columns = []
@@ -176,6 +199,15 @@ def add_analytics_columns_and_tables(db_path):
         click.echo("🔒 Creating security and timeout management tables...")
         tables_created = create_timeout_and_campaign_tables(cursor)
         
+        # Create indexes for new columns
+        click.echo("📊 Creating indexes for performance...")
+        try:
+            # Index on vote.sentence_hash for origin tracking queries
+            cursor.execute("CREATE INDEX IF NOT EXISTS ix_vote_sentence_hash ON vote (sentence_hash)")
+            click.echo("✅ Created index on vote.sentence_hash")
+        except sqlite3.Error as e:
+            click.echo(f"⚠️  Note: Could not create vote.sentence_hash index: {e}")
+        
         # Commit the changes
         conn.commit()
         conn.close()
@@ -206,10 +238,17 @@ def add_analytics_columns_and_tables(db_path):
             click.echo("\n🚨 New Security Features Enabled:")
             click.echo("   • Automatic coordinated voting campaign detection")
             click.echo("   • User timeout management")
+            click.echo("   • Sentence consumption tracking (no reuse)")
+            click.echo("   • Vote origin tracking (dataset vs custom)")
+            click.echo("   • Public leaderboard integrity protection")
             click.echo("   • Admin panels for security monitoring")
             click.echo("\nNew admin panel sections:")
             click.echo("   • /admin/timeouts - Manage user timeouts")
             click.echo("   • /admin/campaigns - View coordinated voting campaigns")
+            click.echo("\nLeaderboard Changes:")
+            click.echo("   • Public leaderboard: Only unconsumed dataset sentences count")
+            click.echo("   • Personal leaderboard: All votes (dataset + custom) included")
+            click.echo("   • Each sentence can only be used once for public rankings")
         
         return True
         
@@ -229,11 +268,18 @@ def migrate(database_path, dry_run, backup):
     """
     Add analytics columns and security tables to the TTS Arena database.
     
+    This migration adds:
+    - Vote analytics (session duration, IP, user agent, etc.)
+    - Sentence origin tracking (dataset vs custom)
+    - Sentence consumption tracking (prevent reuse)
+    - Security features (coordinated voting detection, user timeouts)
+    - Leaderboard integrity protection
+    
     DATABASE_PATH: Path to the SQLite database file (e.g., instance/tts_arena.db)
     """
     click.echo("🚀 TTS Arena Migration Tool")
-    click.echo("Analytics + Security Features")
-    click.echo("=" * 40)
+    click.echo("Analytics + Security + Vote Origin Tracking")
+    click.echo("=" * 50)
     
     # Resolve the database path
     db_path = Path(database_path).resolve()
@@ -262,12 +308,20 @@ def migrate(database_path, dry_run, backup):
         click.echo("   • user_agent (VARCHAR(500))")
         click.echo("   • generation_date (DATETIME)")
         click.echo("   • cache_hit (BOOLEAN)")
+        click.echo("   • sentence_hash (VARCHAR(64))")
+        click.echo("   • sentence_origin (VARCHAR(20))")
+        click.echo("   • counts_for_public_leaderboard (BOOLEAN DEFAULT 1)")
         click.echo("\nThe following columns would be added to the 'user' table:")
         click.echo("   • hf_account_created (DATETIME)")
+        click.echo("   • show_in_leaderboard (BOOLEAN DEFAULT 1)")
         click.echo("\nThe following security tables would be created:")
         click.echo("   • coordinated_voting_campaign - Track detected voting campaigns")
         click.echo("   • campaign_participant - Track users involved in campaigns")
         click.echo("   • user_timeout - Manage user timeouts/bans")
+        click.echo("   • consumed_sentence - Track sentence usage for security")
+        click.echo("\nIndexes would be created:")
+        click.echo("   • ix_vote_sentence_hash - For vote origin tracking")
+        click.echo("   • ix_consumed_sentence_sentence_hash - For sentence consumption queries")
         click.echo("\nRun without --dry-run to apply changes.")
         return
     

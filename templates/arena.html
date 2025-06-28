@@ -1467,19 +1467,14 @@
         function handleRandom() {
             let selectedText = '';
             if (cachedSentences && cachedSentences.length > 0) {
-                // Select a random text from the cache
+                // Select a random text from the unconsumed sentences
                 selectedText = cachedSentences[Math.floor(Math.random() * cachedSentences.length)];
-                console.log("Using random sentence from cache.");
+                console.log("Using random sentence from unconsumed sentences.");
             } else {
-                // Fallback to the initial list if cache is empty or failed to load
-                console.log("Cache empty or unavailable, using random sentence from fallback list.");
-                if (fallbackRandomTexts && fallbackRandomTexts.length > 0) {
-                    selectedText = fallbackRandomTexts[Math.floor(Math.random() * fallbackRandomTexts.length)];
-                } else {
-                    // If fallback list is also empty, do nothing. Log an error.
-                    console.error("Both cached sentences and fallback sentences are unavailable.");
-                    return;
-                }
+                // No fallback to consumed sentences for security reasons
+                console.error("No unconsumed sentences available. All sentences may have been used.");
+                openToast("No unused sentences available. All sentences from the dataset may have been consumed.", "error");
+                return;
             }
             textInput.value = selectedText;
             textInput.focus();

@@ -165,7 +165,6 @@ def predict_dia(script):
     else:
         # If it's already a string, use as is
         text = script
-    print(text)
     # Make a POST request to initiate the dialogue generation
     headers = {
         # "Content-Type": "application/json",
@@ -219,7 +218,6 @@ def predict_tts(text, model):
             }
         ),
     )
-
     response_json = result.json()
 
     audio_data = response_json["audio_data"]  # base64 encoded audio data

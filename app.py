@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 import threading # Added for locking
 from sqlalchemy import or_ # Added for vote counting query
+from datasets import load_dataset
 
 year = datetime.now().year
 month = datetime.now().month
@@ -45,6 +46,10 @@ from flask import (
 )
 from flask_login import LoginManager, current_user
 from models import *
+from models import (
+    hash_sentence, is_sentence_consumed, mark_sentence_consumed,
+    get_unconsumed_sentences, get_consumed_sentences_count, get_random_unconsumed_sentence
+)
 from auth import auth, init_oauth, is_admin
 from admin import admin
 from security import is_vote_allowed, check_user_security_score, detect_coordinated_voting
@@ -304,11 +309,15 @@ def verify_turnstile():
         # Otherwise redirect back to turnstile page
         return redirect(url_for("turnstile_page", redirect_url=redirect_url))
 
-with open("sentences.txt", "r") as f, open("emotional_sentences.txt", "r") as f_emotional:
-    # Store all sentences and clean them up
-    all_harvard_sentences = [line.strip() for line in f.readlines() if line.strip()] + [line.strip() for line in f_emotional.readlines() if line.strip()]
-    # Shuffle for initial random selection if needed, but main list remains ordered
-    initial_sentences = random.sample(all_harvard_sentences, min(len(all_harvard_sentences), 500)) # Limit initial pass for template
+# Load sentences from the TTS-AGI/arena-prompts dataset
+print("Loading TTS-AGI/arena-prompts dataset...")
+dataset = load_dataset("TTS-AGI/arena-prompts", split="train")
+# Extract the text column and clean up
+all_harvard_sentences = [item['text'].strip() for item in dataset if item['text'] and item['text'].strip()]
+print(f"Loaded {len(all_harvard_sentences)} sentences from dataset")
+
+# Initialize initial_sentences as empty - will be populated with unconsumed sentences only
+initial_sentences = []
 
 @app.route("/")
 def arena():
@@ -433,9 +442,11 @@ def _generate_cache_entry_task(sentence):
             # Select a new sentence if not provided (for replacement)
             with tts_cache_lock:
                 cached_keys = set(tts_cache.keys())
-            available_sentences = [s for s in all_harvard_sentences if s not in cached_keys]
+            # Get unconsumed sentences that are also not already cached
+            unconsumed_sentences = get_unconsumed_sentences(all_harvard_sentences)
+            available_sentences = [s for s in unconsumed_sentences if s not in cached_keys]
             if not available_sentences:
-                app.logger.warning("No more unique Harvard sentences available for caching.")
+                app.logger.warning("No more unconsumed sentences available for caching. All sentences have been consumed.")
                 return
             sentence = random.choice(available_sentences)
 
@@ -475,6 +486,8 @@ def _generate_cache_entry_task(sentence):
                             "audio_b": audio_b_path,
                             "created_at": datetime.utcnow(),
                         }
+                        # Mark sentence as consumed for cache usage
+                        mark_sentence_consumed(sentence, usage_type='cache')
                         app.logger.info(f"Successfully cached entry for: '{sentence[:50]}...'")
                     elif sentence in tts_cache:
                          app.logger.warning(f"Sentence '{sentence[:50]}...' already re-cached. Discarding new generation.")
@@ -498,6 +511,22 @@ def _generate_cache_entry_task(sentence):
             app.logger.error(f"Exception in _generate_cache_entry_task for '{sentence[:50]}...': {str(e)}", exc_info=True)
 
 
+def update_initial_sentences():
+    """Update initial sentences to only include unconsumed ones."""
+    global initial_sentences
+    try:
+        unconsumed_for_initial = get_unconsumed_sentences(all_harvard_sentences)
+        if unconsumed_for_initial:
+            initial_sentences = random.sample(unconsumed_for_initial, min(len(unconsumed_for_initial), 500))
+            print(f"Updated initial sentences with {len(initial_sentences)} unconsumed sentences")
+        else:
+            print("Warning: No unconsumed sentences available for initial selection, disabling fallback")
+            initial_sentences = []  # No fallback to consumed sentences
+    except Exception as e:
+        print(f"Error updating initial sentences: {e}, disabling fallback for security")
+        initial_sentences = []  # No fallback to consumed sentences
+
+
 def initialize_tts_cache():
     print("Initializing TTS cache")
     """Selects initial sentences and starts generation tasks."""
@@ -506,7 +535,16 @@ def initialize_tts_cache():
             app.logger.error("Harvard sentences not loaded. Cannot initialize cache.")
             return
 
-        initial_selection = random.sample(all_harvard_sentences, min(len(all_harvard_sentences), TTS_CACHE_SIZE))
+        # Update initial sentences with unconsumed ones
+        update_initial_sentences()
+
+        # Only use unconsumed sentences for initial cache population
+        unconsumed_sentences = get_unconsumed_sentences(all_harvard_sentences)
+        if not unconsumed_sentences:
+            app.logger.error("No unconsumed sentences available for cache initialization. Cache will remain empty.")
+            app.logger.warning("WARNING: All sentences from the dataset have been consumed. No new TTS generations will be possible.")
+            return
+        initial_selection = random.sample(unconsumed_sentences, min(len(unconsumed_sentences), TTS_CACHE_SIZE))
         app.logger.info(f"Initializing TTS cache with {len(initial_selection)} sentences...")
 
         for sentence in initial_selection:
@@ -533,6 +571,14 @@ def generate_tts():
 
     if not text or len(text) > 1000:
         return jsonify({"error": "Invalid or too long text"}), 400
+    
+    # Check if sentence has already been consumed
+    if is_sentence_consumed(text):
+        remaining_count = len(get_unconsumed_sentences(all_harvard_sentences))
+        if remaining_count == 0:
+            return jsonify({"error": "This sentence has already been used and no unconsumed sentences remain. All sentences from the dataset have been consumed."}), 400
+        else:
+            return jsonify({"error": f"This sentence has already been used. Please select a different sentence. {remaining_count} sentences remain available."}), 400
 
     # --- Cache Check ---
     cache_hit = False
@@ -557,6 +603,9 @@ def generate_tts():
                 "cache_hit": True,
             }
             app.tts_sessions[session_id] = session_data_from_cache
+            
+            # Note: Sentence was already marked as consumed when it was cached
+            # No need to mark it again here
 
             # --- Trigger background tasks to refill the cache ---
             # Calculate how many slots need refilling
@@ -640,6 +689,9 @@ def generate_tts():
             "voted": False,
             "cache_hit": False,
         }
+        
+        # Mark sentence as consumed for direct usage
+        mark_sentence_consumed(text, session_id=session_id, usage_type='direct')
 
         # Return audio file paths and session
         return jsonify(
@@ -768,11 +820,20 @@ def submit_vote():
         ip_address=client_ip,
         user_agent=user_agent,
         generation_date=session_data["created_at"],
-        cache_hit=cache_hit
+        cache_hit=cache_hit,
+        all_dataset_sentences=all_harvard_sentences
     )
 
     if error:
         return jsonify({"error": error}), 500
+
+    # Mark sentence as consumed AFTER successful vote recording (only for dataset sentences)
+    if vote and vote.sentence_origin == 'dataset' and vote.counts_for_public_leaderboard:
+        try:
+            mark_sentence_consumed(session_data["text"], session_id=session_id, usage_type='voted')
+            app.logger.info(f"Marked dataset sentence as consumed after vote: '{session_data['text'][:50]}...'")
+        except Exception as e:
+            app.logger.error(f"Error marking sentence as consumed after vote: {str(e)}")
 
     # --- Save preference data ---
     try:
@@ -1066,11 +1127,21 @@ def submit_podcast_vote():
         ip_address=client_ip,
         user_agent=user_agent,
         generation_date=session_data["created_at"],
-        cache_hit=cache_hit
+        cache_hit=cache_hit,
+        all_dataset_sentences=all_harvard_sentences  # Note: conversational uses scripts, not sentences
     )
 
     if error:
         return jsonify({"error": error}), 500
+
+    # Mark sentence as consumed AFTER successful vote recording (only for dataset sentences)
+    # Note: Conversational votes typically use custom scripts, not dataset sentences
+    if vote and vote.sentence_origin == 'dataset' and vote.counts_for_public_leaderboard:
+        try:
+            mark_sentence_consumed(session_data["text"], session_id=session_id, usage_type='voted')
+            app.logger.info(f"Marked dataset sentence as consumed after conversational vote: '{session_data['text'][:50]}...'")
+        except Exception as e:
+            app.logger.error(f"Error marking sentence as consumed after conversational vote: {str(e)}")
 
     # --- Save preference data ---\
     try:
@@ -1400,10 +1471,47 @@ def toggle_leaderboard_visibility():
 
 @app.route("/api/tts/cached-sentences")
 def get_cached_sentences():
-    """Returns a list of sentences currently available in the TTS cache."""
-    with tts_cache_lock:
-        cached_keys = list(tts_cache.keys())
-    return jsonify(cached_keys)
+    """Returns a list of unconsumed sentences available for random selection."""
+    # Get unconsumed sentences from the full pool (not just cached ones)
+    unconsumed_sentences = get_unconsumed_sentences(all_harvard_sentences)
+    
+    # Limit the response size to avoid overwhelming the frontend
+    max_sentences = 1000
+    if len(unconsumed_sentences) > max_sentences:
+        import random
+        unconsumed_sentences = random.sample(unconsumed_sentences, max_sentences)
+    
+    return jsonify(unconsumed_sentences)
+
+
+@app.route("/api/tts/sentence-stats")
+def get_sentence_stats():
+    """Returns statistics about sentence consumption."""
+    total_sentences = len(all_harvard_sentences)
+    consumed_count = get_consumed_sentences_count()
+    remaining_count = total_sentences - consumed_count
+    
+    return jsonify({
+        "total_sentences": total_sentences,
+        "consumed_sentences": consumed_count,
+        "remaining_sentences": remaining_count,
+        "consumption_percentage": round((consumed_count / total_sentences) * 100, 2) if total_sentences > 0 else 0
+    })
+
+
+@app.route("/api/tts/random-sentence")
+def get_random_sentence():
+    """Returns a random unconsumed sentence."""
+    random_sentence = get_random_unconsumed_sentence(all_harvard_sentences)
+    if random_sentence:
+        return jsonify({"sentence": random_sentence})
+    else:
+        total_sentences = len(all_harvard_sentences)
+        consumed_count = get_consumed_sentences_count()
+        return jsonify({
+            "error": "No unconsumed sentences available", 
+            "details": f"All {total_sentences} sentences have been consumed ({consumed_count} total consumed)"
+        }), 404
 
 
 def get_weighted_random_models(
