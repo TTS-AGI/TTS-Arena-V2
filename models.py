@@ -601,13 +601,14 @@ def insert_initial_models():
             name="PlayHT 2.0",
             model_type=ModelType.TTS,
             is_open=False,
+            is_active=False,
             model_url="https://play.ht/",
         ),
         Model(
             id="styletts2",
             name="StyleTTS 2",
             model_type=ModelType.TTS,
-            is_open=True,
+            is_open=False,
             model_url="https://github.com/yl4579/StyleTTS2",
         ),
         Model(
