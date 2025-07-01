@@ -674,7 +674,7 @@ def insert_initial_models():
             name="CastleFlow v1.0",
             model_type=ModelType.TTS,
             is_open=False,
-            is_active=True,
+            is_active=False,
             model_url="https://async.ai/",
         ),
     ]
