@@ -668,6 +668,14 @@ def insert_initial_models():
             is_active=False, # NOTE: Waiting to receive a pool of voices
             model_url="https://fish.audio/",
         ),
+        Model(
+            id="async-1",
+            name="CastleFlow v1.0",
+            model_type=ModelType.TTS,
+            is_open=False,
+            is_active=True,
+            model_url="https://async.ai/",
+        ),
     ]
     conversational_models = [
         Model(
