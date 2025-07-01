@@ -27,6 +27,10 @@ model_mapping = {
         "provider": "elevenlabs",
         "model": "eleven_multilingual_v2",
     },
+    "async-1": {
+        "provider": "async",
+        "model": "async-1",
+    },
     "eleven-turbo-v2.5": {
         "provider": "elevenlabs",
         "model": "eleven_turbo_v2_5",
