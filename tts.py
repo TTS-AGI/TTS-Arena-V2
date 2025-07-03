@@ -87,7 +87,7 @@ model_mapping = {
         "provider": "lanternfish",
         "model": "lanternfish-1",
     },
-    "nls-1": {
+    "nls-pre-v1": {
         "provider": "nls",
         "model": "nls-1",
     },
