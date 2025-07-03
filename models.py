@@ -677,6 +677,14 @@ def insert_initial_models():
             is_active=True,
             model_url="https://async.ai/",
         ),
+        Model(
+            id="nls-pre-v1",
+            name="NLS Pre V1",
+            model_type=ModelType.TTS,
+            is_open=False,
+            is_active=True,
+            model_url="https://ttsarena.org/",
+        ),
     ]
     conversational_models = [
         Model(
