@@ -87,6 +87,10 @@ model_mapping = {
         "provider": "lanternfish",
         "model": "lanternfish-1",
     },
+    "nls-1": {
+        "provider": "nls",
+        "model": "nls-1",
+    },
 }
 url = "https://tts-agi-tts-router-v2.hf.space/tts"
 headers = {
