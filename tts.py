@@ -91,6 +91,10 @@ model_mapping = {
         "provider": "nls",
         "model": "nls-1",
     },
+    "chatterbox": {
+        "provider": "chatterbox",
+        "model": "chatterbox",
+    },
 }
 url = "https://tts-agi-tts-router-v2.hf.space/tts"
 headers = {

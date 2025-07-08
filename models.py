@@ -670,6 +670,14 @@ def insert_initial_models():
             model_url="https://fish.audio/",
         ),
         Model(
+            id="chatterbox",
+            name="Chatterbox",
+            model_type=ModelType.TTS,
+            is_open=False,
+            is_active=True,
+            model_url="https://www.resemble.ai/chatterbox/",
+        ),
+        Model(
             id="async-1",
             name="CastleFlow v1.0",
             model_type=ModelType.TTS,
