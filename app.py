@@ -690,8 +690,8 @@ def generate_tts():
             "cache_hit": False,
         }
         
-        # Mark sentence as consumed for direct usage
-        mark_sentence_consumed(text, session_id=session_id, usage_type='direct')
+        # Don't mark as consumed yet - wait until vote is submitted to maintain security
+        # while allowing legitimate votes to count for ELO
 
         # Return audio file paths and session
         return jsonify(
@@ -827,13 +827,7 @@ def submit_vote():
     if error:
         return jsonify({"error": error}), 500
 
-    # Mark sentence as consumed AFTER successful vote recording (only for dataset sentences)
-    if vote and vote.sentence_origin == 'dataset' and vote.counts_for_public_leaderboard:
-        try:
-            mark_sentence_consumed(session_data["text"], session_id=session_id, usage_type='voted')
-            app.logger.info(f"Marked dataset sentence as consumed after vote: '{session_data['text'][:50]}...'")
-        except Exception as e:
-            app.logger.error(f"Error marking sentence as consumed after vote: {str(e)}")
+    # Sentence consumption is now handled within record_vote function
 
     # --- Save preference data ---
     try:
@@ -1134,14 +1128,7 @@ def submit_podcast_vote():
     if error:
         return jsonify({"error": error}), 500
 
-    # Mark sentence as consumed AFTER successful vote recording (only for dataset sentences)
-    # Note: Conversational votes typically use custom scripts, not dataset sentences
-    if vote and vote.sentence_origin == 'dataset' and vote.counts_for_public_leaderboard:
-        try:
-            mark_sentence_consumed(session_data["text"], session_id=session_id, usage_type='voted')
-            app.logger.info(f"Marked dataset sentence as consumed after conversational vote: '{session_data['text'][:50]}...'")
-        except Exception as e:
-            app.logger.error(f"Error marking sentence as consumed after conversational vote: {str(e)}")
+    # Sentence consumption is now handled within record_vote function
 
     # --- Save preference data ---\
     try:

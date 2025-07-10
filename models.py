@@ -243,8 +243,8 @@ def record_vote(user_id, text, chosen_model_id, rejected_model_id, model_type,
     
     if all_dataset_sentences and text in all_dataset_sentences:
         sentence_origin = 'dataset'
-        # Only count for public leaderboard if sentence was unconsumed when used
-        # Check if it was consumed BEFORE this vote (don't consume yet)
+        # For dataset sentences, check if already consumed to prevent fraud
+        # But now we'll mark as consumed AFTER successful vote recording
         counts_for_public = not is_sentence_consumed(text)
     else:
         sentence_origin = 'custom'
@@ -316,6 +316,15 @@ def record_vote(user_id, text, chosen_model_id, rejected_model_id, model_type,
     )
 
     db.session.add_all([chosen_history, rejected_history])
+    
+    # Mark sentence as consumed AFTER successful vote recording (only for dataset sentences that count)
+    if counts_for_public and sentence_origin == 'dataset':
+        try:
+            mark_sentence_consumed(text, usage_type='voted')
+        except Exception as e:
+            # If consumption marking fails, log but don't fail the vote
+            logging.error(f"Failed to mark sentence as consumed after vote: {str(e)}")
+    
     db.session.commit()
 
     return vote, None
