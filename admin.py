@@ -565,7 +565,7 @@ def analytics():
         analytics_stats['recent_votes'] = [
             {
                 'id': vote.id,
-                'vote_date': vote.vote_date,
+                'vote_date': vote.vote_date if isinstance(vote.vote_date, datetime) else datetime.fromisoformat(str(vote.vote_date).replace('Z', '+00:00')) if vote.vote_date else None,
                 'duration': round(vote.session_duration_seconds, 2) if vote.session_duration_seconds else None,
                 'ip': vote.ip_address_partial,
                 'cache_hit': vote.cache_hit,
