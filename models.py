@@ -687,6 +687,14 @@ def insert_initial_models():
             model_url="https://www.resemble.ai/chatterbox/",
         ),
         Model(
+            id="inworld",
+            name="Inworld TTS",
+            model_type=ModelType.TTS,
+            is_open=False,
+            is_active=True,
+            model_url="https://inworld.ai/",
+        ),
+        Model(
             id="async-1",
             name="CastleFlow v1.0",
             model_type=ModelType.TTS,

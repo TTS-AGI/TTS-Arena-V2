@@ -95,6 +95,10 @@ model_mapping = {
         "provider": "chatterbox",
         "model": "chatterbox",
     },
+    "inworld": {
+        "provider": "inworld",
+        "model": "inworld",
+    },
 }
 url = "https://tts-agi-tts-router-v2.hf.space/tts"
 headers = {
