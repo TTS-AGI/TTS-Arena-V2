@@ -692,7 +692,7 @@ def insert_initial_models():
             model_type=ModelType.TTS,
             is_open=False,
             is_active=True,
-            model_url="https://inworld.ai/",
+            model_url="https://inworld.ai/tts",
         ),
         Model(
             id="async-1",
