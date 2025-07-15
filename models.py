@@ -618,6 +618,7 @@ def insert_initial_models():
             name="StyleTTS 2",
             model_type=ModelType.TTS,
             is_open=False,
+            is_active=False,
             model_url="https://github.com/yl4579/StyleTTS2",
         ),
         Model(
