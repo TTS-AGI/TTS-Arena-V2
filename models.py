@@ -747,6 +747,7 @@ def insert_initial_models():
             # Update model attributes if they've changed, but preserve other data
             existing.name = model.name
             existing.is_open = model.is_open
+            existing.model_url = model.model_url
             if model.is_active is not None:
                 existing.is_active = model.is_active
 
