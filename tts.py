@@ -99,6 +99,10 @@ model_mapping = {
         "provider": "inworld",
         "model": "inworld",
     },
+    "wordcab": {
+        "provider": "wordcab",
+        "model": "wordcab",
+    },
 }
 url = "https://tts-agi-tts-router-v2.hf.space/tts"
 headers = {

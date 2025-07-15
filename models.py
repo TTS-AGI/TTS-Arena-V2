@@ -710,6 +710,14 @@ def insert_initial_models():
             is_active=True,
             model_url="https://ttsarena.org/",
         ),
+        Model(
+            id="wordcab",
+            name="Wordcab TTS",
+            model_type=ModelType.TTS,
+            is_open=False,
+            is_active=True,
+            model_url="https://wordcab.com/",
+        ),
     ]
     conversational_models = [
         Model(
