@@ -68,6 +68,29 @@ from flask_migrate import Migrate
 import requests
 import functools
 import time # Added for potential retries
+from langdetect import detect, DetectorFactory
+
+# Set random seed for consistent language detection results
+DetectorFactory.seed = 0
+
+
+def is_english_text(text):
+    """
+    Detect if the given text is in English.
+    Returns True if English, False otherwise.
+    """
+    try:
+        # Remove leading/trailing whitespace and check if text is not empty
+        text = text.strip()
+        if not text:
+            return False
+        
+        # Detect language
+        detected_language = detect(text)
+        return detected_language == 'en'
+    except Exception:
+        # If detection fails, assume it's not English for safety
+        return False
 
 
 def get_client_ip():
@@ -571,6 +594,10 @@ def generate_tts():
 
     if not text or len(text) > 1000:
         return jsonify({"error": "Invalid or too long text"}), 400
+    
+    # Check if text is in English
+    if not is_english_text(text):
+        return jsonify({"error": "Only English language text is supported for now. Please provide text in English. A multilingual Arena is coming soon!"}), 400
     
     # Check if sentence has already been consumed
     if is_sentence_consumed(text):
