@@ -345,7 +345,7 @@ def get_leaderboard_data(model_type):
 
     # Get models with >350 votes ordered by ELO score
     # Note: Model.match_count now only includes votes that count for public leaderboard
-    models = query.filter(Model.match_count > 300).order_by(Model.current_elo.desc()).all()
+    models = query.filter(Model.match_count > 250).order_by(Model.current_elo.desc()).all()
 
     result = []
     for rank, model in enumerate(models, 1):
