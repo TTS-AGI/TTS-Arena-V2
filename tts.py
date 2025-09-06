@@ -97,7 +97,11 @@ model_mapping = {
     },
     "inworld": {
         "provider": "inworld",
-        "model": "inworld",
+        "model": "inworld-tts-1",
+    },
+    "inworld-max": {
+        "provider": "inworld",
+        "model": "inworld-tts-1-max",
     },
     "wordcab": {
         "provider": "wordcab",
