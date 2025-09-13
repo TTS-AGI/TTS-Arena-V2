@@ -107,6 +107,10 @@ model_mapping = {
         "provider": "wordcab",
         "model": "wordcab",
     },
+    "veena": {
+        "provider": "veena",
+        "model": "veena",
+    }
 }
 url = "https://tts-agi-tts-router-v2.hf.space/tts"
 headers = {
