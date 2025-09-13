@@ -727,6 +727,14 @@ def insert_initial_models():
             is_active=True,
             model_url="https://wordcab.com/",
         ),
+        Model(
+            id="veena",
+            name="Veena",
+            model_type=ModelType.TTS,
+            is_open=True,
+            is_active=True,
+            model_url="https://mayaresearch.ai/",
+        ),
     ]
     conversational_models = [
         Model(
