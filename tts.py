@@ -110,6 +110,10 @@ model_mapping = {
     "veena": {
         "provider": "veena",
         "model": "veena",
+    },
+    "magpie": {
+        "provider": "magpie",
+        "model": "magpie",
     }
 }
 url = "https://tts-agi-tts-router-v2.hf.space/tts"
