@@ -735,6 +735,14 @@ def insert_initial_models():
             is_active=True,
             model_url="https://mayaresearch.ai/",
         ),
+        Model(
+            id="magpie",
+            name="Magpie Multilingual",
+            model_type=ModelType.TTS,
+            is_open=False,
+            is_active=True,
+            model_url="https://build.nvidia.com/nvidia/magpie-tts-multilingual",
+        ),
     ]
     conversational_models = [
         Model(
