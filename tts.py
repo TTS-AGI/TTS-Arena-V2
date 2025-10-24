@@ -111,6 +111,10 @@ model_mapping = {
         "provider": "veena",
         "model": "veena",
     },
+    "maya1": {
+        "provider": "maya1",
+        "model": "maya1",
+    },
     "magpie": {
         "provider": "magpie",
         "model": "magpie",

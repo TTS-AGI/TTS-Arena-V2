@@ -736,6 +736,14 @@ def insert_initial_models():
             model_url="https://mayaresearch.ai/",
         ),
         Model(
+            id="maya1",
+            name="Maya 1",
+            model_type=ModelType.TTS,
+            is_open=False,
+            is_active=True,
+            model_url="https://mayaresearch.ai/",
+        ),
+        Model(
             id="magpie",
             name="Magpie Multilingual",
             model_type=ModelType.TTS,
