@@ -751,6 +751,14 @@ def insert_initial_models():
             is_active=True,
             model_url="https://build.nvidia.com/nvidia/magpie-tts-multilingual",
         ),
+        Model(
+            id="parmesan",
+            name="Parmesan",
+            model_type=ModelType.TTS,
+            is_open=False,
+            is_active=True,
+            model_url="https://ttsarena.org/",
+        ),
     ]
     conversational_models = [
         Model(

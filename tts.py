@@ -118,7 +118,11 @@ model_mapping = {
     "magpie": {
         "provider": "magpie",
         "model": "magpie",
-    }
+    },
+    "parmesan": {
+        "provider": "parmesan",
+        "model": "parmesan",
+    },
 }
 url = "https://tts-agi-tts-router-v2.hf.space/tts"
 headers = {
