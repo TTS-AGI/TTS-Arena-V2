@@ -759,6 +759,14 @@ def insert_initial_models():
             is_active=True,
             model_url="https://ttsarena.org/",
         ),
+        Model(
+            id="vocu",
+            name="Vocu V3.0",
+            model_type=ModelType.TTS,
+            is_open=False,
+            is_active=True,
+            model_url="https://vocu.ai/",
+        ),
     ]
     conversational_models = [
         Model(

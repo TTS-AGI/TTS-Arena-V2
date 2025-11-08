@@ -123,6 +123,10 @@ model_mapping = {
         "provider": "parmesan",
         "model": "parmesan",
     },
+    "vocu": {
+        "provider": "vocu",
+        "model": "vocu-balance",
+    },
 }
 url = "https://tts-agi-tts-router-v2.hf.space/tts"
 headers = {
