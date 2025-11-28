@@ -767,6 +767,14 @@ def insert_initial_models():
             is_active=True,
             model_url="https://vocu.ai/",
         ),
+        Model(
+            id="neuphonic",
+            name="NeuTTS Max",
+            model_type=ModelType.TTS,
+            is_open=False,
+            is_active=True,
+            model_url="https://neuphonic.ai/",
+        ),
     ]
     conversational_models = [
         Model(
