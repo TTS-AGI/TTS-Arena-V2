@@ -127,6 +127,10 @@ model_mapping = {
         "provider": "vocu",
         "model": "vocu-balance",
     },
+    "neuphonic": {
+        "provider": "neuphonic",
+        "model": "neutts",
+    },
 }
 url = "https://tts-agi-tts-router-v2.hf.space/tts"
 headers = {
