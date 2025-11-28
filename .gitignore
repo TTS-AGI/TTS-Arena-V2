@@ -52,3 +52,5 @@ static/temp_audio
 votes/
 
 .claude
+
+recalibrate_*

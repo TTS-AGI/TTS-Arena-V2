@@ -193,7 +193,7 @@ class ConsumedSentence(db.Model):
         return f"<ConsumedSentence {self.sentence_hash[:8]}...({self.usage_type})>"
 
 
-def calculate_elo_change(winner_elo, loser_elo, k_factor=32):
+def calculate_elo_change(winner_elo, loser_elo, k_factor=2):
     """Calculate Elo rating changes for a match."""
     expected_winner = 1 / (1 + math.pow(10, (loser_elo - winner_elo) / 400))
     expected_loser = 1 / (1 + math.pow(10, (winner_elo - loser_elo) / 400))
