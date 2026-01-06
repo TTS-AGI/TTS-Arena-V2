@@ -752,6 +752,14 @@ def insert_initial_models():
             model_url="https://build.nvidia.com/nvidia/magpie-tts-multilingual",
         ),
         Model(
+            id="magpie-rp",
+            name="Magpie Research Preview",
+            model_type=ModelType.TTS,
+            is_open=False,
+            is_active=True,
+            model_url="https://github.com/NVIDIA-NeMo/NeMo",
+        ),
+        Model(
             id="parmesan",
             name="Parmesan",
             model_type=ModelType.TTS,

@@ -131,6 +131,10 @@ model_mapping = {
         "provider": "neuphonic",
         "model": "neutts",
     },
+    "magpie-rp": {
+        "provider": "magpie-rp",
+        "model": "magpietts_research",
+    },
 }
 url = "https://tts-agi-tts-router-v2.hf.space/tts"
 headers = {
