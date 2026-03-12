@@ -135,6 +135,14 @@ model_mapping = {
         "provider": "magpie-rp",
         "model": "magpietts_research",
     },
+    "mars": {
+        "provider": "mars",
+        "model": "mars",
+    },
+    "tontaube": {
+        "provider": "tontaube",
+        "model": "tontaube",
+    },
 }
 url = "https://tts-agi-tts-router-v2.hf.space/tts"
 headers = {

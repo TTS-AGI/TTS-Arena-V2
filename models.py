@@ -783,6 +783,22 @@ def insert_initial_models():
             is_active=True,
             model_url="https://neuphonic.ai/",
         ),
+        Model(
+            id="mars",
+            name="MARS",
+            model_type=ModelType.TTS,
+            is_open=False,
+            is_active=True,
+            model_url="https://camb.ai/",
+        ),
+        Model(
+            id="tontaube",
+            name="Tontaube",
+            model_type=ModelType.TTS,
+            is_open=False,
+            is_active=True,
+            model_url="https://tontaube.ai/",
+        ),
     ]
     conversational_models = [
         Model(
