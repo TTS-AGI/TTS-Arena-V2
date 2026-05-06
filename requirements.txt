@@ -8,6 +8,7 @@ werkzeug
 flask-limiter
 apscheduler
 flask-migrate
+pyht
 gunicorn
 waitress
 fal-client
