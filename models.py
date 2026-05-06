@@ -650,6 +650,14 @@ def insert_initial_models():
             model_url="https://hume.ai/",
         ),
         Model(
+            id="deepdub-etts-3.2",
+            name="Deepdub ETTS 3.2",
+            model_type=ModelType.TTS,
+            is_open=False,
+            is_active=True,
+            model_url="https://deepdub.ai/",
+        ),
+        Model(
             id="megatts3",
             name="MegaTTS 3",
             model_type=ModelType.TTS,

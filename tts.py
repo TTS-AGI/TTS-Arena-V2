@@ -71,6 +71,10 @@ model_mapping = {
         "provider": "hume",
         "model": "octave",
     },
+    "deepdub-etts-3.2": {
+        "provider": "deepdub",
+        "model": "dd-etts-3.2",
+    },
     "megatts3": {
         "provider": "megatts3",
         "model": "megatts3",
